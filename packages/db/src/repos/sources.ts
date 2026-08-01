@@ -3,6 +3,7 @@ import {
   type PlaylistSource,
   type SourceKind,
   type SourceStats,
+  type SourceSubscription,
   type StreamEndpoints,
   type StreamProtocolPreference,
 } from "@iptv/core";
@@ -64,6 +65,7 @@ export async function createSource(input: CreateSourceInput): Promise<PlaylistSo
     lastSuccessAt: null,
     lastError: null,
     stats: null,
+    subscription: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -83,6 +85,7 @@ export async function markSourceSuccess(
   id: string,
   stats: SourceStats,
   streamEndpoints?: StreamEndpoints | null,
+  subscription?: SourceSubscription | null,
 ): Promise<void> {
   const now = Date.now();
   await updateSource(id, {
@@ -91,6 +94,7 @@ export async function markSourceSuccess(
     lastSuccessAt: now,
     lastError: null,
     ...(streamEndpoints ? { streamEndpoints } : {}),
+    ...(subscription ? { subscription } : {}),
   });
 }
 

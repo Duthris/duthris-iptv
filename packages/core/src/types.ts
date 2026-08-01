@@ -11,6 +11,17 @@ export interface StreamEndpoints {
   https: string | null;
 }
 
+export interface SourceSubscription {
+  status: string | null;
+  isTrial: boolean;
+  /** Epoch milliseconds; null when the panel reports no expiry. */
+  expiresAt: number | null;
+  maxConnections: number;
+  activeConnections: number;
+  /** When these figures were last read from the panel. */
+  checkedAt: number;
+}
+
 export interface PlaylistSource {
   id: string;
   name: string;
@@ -35,6 +46,8 @@ export interface PlaylistSource {
   lastSuccessAt: number | null;
   lastError: string | null;
   stats: SourceStats | null;
+  /** Xtream only; M3U playlists carry no account information. */
+  subscription: SourceSubscription | null;
   createdAt: number;
   updatedAt: number;
 }
