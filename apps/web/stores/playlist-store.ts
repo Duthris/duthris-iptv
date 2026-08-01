@@ -5,6 +5,8 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import type { ParseProgress, PlaylistSource } from "@iptv/core";
 import { listSources } from "@iptv/db";
 
+import { useActiveProfile } from "@/stores/profile-store";
+
 export interface ImportState {
   sourceId: string | null;
   sourceName: string;
@@ -93,11 +95,26 @@ export const usePlaylistStore = create<PlaylistState>()(
   ),
 );
 
+/**
+ * Sources the current profile may read from.
+ *
+ * Three filters stack, narrowest last: the source has to be enabled, allowed
+ * for the active profile, and — when one is pinned in the UI — the selected
+ * one. An empty `allowedSourceIds` means no restriction rather than no access,
+ * which is what keeps existing profiles working after the field was added.
+ */
 export function useActiveSourceIds(): string[] {
   const { sources, selectedSourceId } = usePlaylistStore();
-  const enabled = sources.filter((source) => source.enabled);
+  const profile = useActiveProfile();
+
+  const allowed = profile?.allowedSourceIds ?? [];
+  const visible = sources.filter(
+    (source) =>
+      source.enabled && (allowed.length === 0 || allowed.includes(source.id)),
+  );
+
   if (selectedSourceId) {
-    return enabled.some((source) => source.id === selectedSourceId) ? [selectedSourceId] : [];
+    return visible.some((source) => source.id === selectedSourceId) ? [selectedSourceId] : [];
   }
-  return enabled.map((source) => source.id);
+  return visible.map((source) => source.id);
 }

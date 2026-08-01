@@ -7,11 +7,13 @@ import { PROFILE_COLORS, createProfile, deleteProfile, type ProfileColor } from 
 import { Badge, Button, Card, FieldHint, Input, Label, cn } from "@iptv/ui";
 
 import { AppShell } from "@/components/app-shell";
+import { SourceAccess } from "@/components/profile/source-access";
 import { useProfileStore } from "@/stores/profile-store";
 import { initialsOf } from "@/lib/format";
 
 export default function ProfilesPage() {
   const { profiles, activeProfileId, setActiveProfile, refresh } = useProfileStore();
+  const activeProfile = profiles.find((entry) => entry.id === activeProfileId) ?? null;
   const [creating, setCreating] = React.useState(false);
   const [name, setName] = React.useState("");
   const [color, setColor] = React.useState<ProfileColor>("violet");
@@ -69,8 +71,8 @@ export default function ProfilesPage() {
           <div className="flex flex-col gap-1.5">
             <h1 className="text-foreground text-2xl font-semibold tracking-tight">Profiller</h1>
             <p className="text-muted-foreground text-sm">
-              Her profilin kendi favorileri ve izleme geçmişi olur. Playlistler tüm profillerde
-              ortaktır.
+              Her profilin kendi favorileri ve izleme geçmişi olur. Playlistler varsayılan olarak
+              ortaktır; istersen profil bazında sınırlayabilirsin.
             </p>
           </div>
 
@@ -245,6 +247,25 @@ export default function ProfilesPage() {
             </Card>
           ) : null}
         </div>
+
+        {/*
+          Shown for the active profile only, and as its own card rather than
+          inside the grid: the profile cards are click-to-switch, so putting
+          checkboxes inside one would fight with that.
+        */}
+        {activeProfile ? (
+          <Card className="flex flex-col gap-4 p-5">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-md font-semibold tracking-tight text-foreground">
+                {activeProfile.name} için içerik erişimi
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Birden fazla playlist ekliyse, bu profilin hangilerini göreceğini seçebilirsin.
+              </p>
+            </div>
+            <SourceAccess profile={activeProfile} />
+          </Card>
+        ) : null}
       </div>
     </AppShell>
   );
