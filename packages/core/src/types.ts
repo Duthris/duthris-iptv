@@ -237,4 +237,7 @@ export interface WatchHistoryEntry {
   durationSecs: number | null;
   completed: boolean;
   watchedAt: number;
+
+  playCount: number;
+  totalSecs: number;
 }
