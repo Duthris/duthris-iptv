@@ -48,3 +48,8 @@ nsis:
 
 portable:
   artifactName: ${productName}-${version}-portable.${ext}
+
+publish:
+  provider: github
+  owner: Duthris
+  repo: duthris-iptv
