@@ -79,6 +79,12 @@ const SEEK_DEBOUNCE_MS = 450;
 
 const EXTERNAL_SUBTITLE_ID = "external";
 
+interface QualityLevel {
+  index: number;
+  height: number | null;
+  bitrate: number | null;
+}
+
 const BROWSER_CONTAINERS = /\.(mp4|m4v|webm|mov|m3u8|ts|mpegts)(\?|#|$)/i;
 
 function isBrowserPlayableSource(url: string): boolean {
@@ -171,6 +177,16 @@ export function VideoPlayer({
   const [externalActive, setExternalActive] = React.useState(false);
   const [activeCueText, setActiveCueText] = React.useState<string | null>(null);
   const [videoSize, setVideoSize] = React.useState<{ width: number; height: number } | null>(null);
+  /**
+   * Renditions the manifest offers, and which one is on screen.
+   *
+   * Only meaningful on the hls.js path; a single-rendition stream reports one
+   * level and the picker stays hidden. `-1` means the adaptive algorithm is
+   * choosing.
+   */
+  const [qualityLevels, setQualityLevels] = React.useState<QualityLevel[]>([]);
+  const [activeLevel, setActiveLevel] = React.useState(-1);
+  const [manualLevel, setManualLevel] = React.useState(-1);
   const subtitleFileRef = React.useRef<HTMLInputElement>(null);
   const volumeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -378,7 +394,22 @@ export function VideoPlayer({
       hls.on(HlsCtor.Events.MANIFEST_PARSED, () => {
         if (cancelled) return;
         silentRetries = 0;
+        setQualityLevels(
+          hls.levels.map((level, index) => ({
+            index,
+            height: level.height || null,
+            bitrate: level.bitrate || null,
+          })),
+        );
         if (autoplay) void video.play().catch(() => undefined);
+      });
+
+      /**
+       * Reported whenever the adaptive algorithm moves, so the menu can show
+       * which rendition "Otomatik" has settled on rather than just the word.
+       */
+      hls.on(HlsCtor.Events.LEVEL_SWITCHED, (_event, data) => {
+        if (!cancelled) setActiveLevel(data.level);
       });
 
       hls.on(HlsCtor.Events.ERROR, (_event, data) => {
@@ -1038,6 +1069,47 @@ export function VideoPlayer({
     return rows;
   }, [videoSize, transcode, url]);
 
+  React.useEffect(() => {
+    setQualityLevels([]);
+    setActiveLevel(-1);
+    setManualLevel(-1);
+  }, [url]);
+
+  React.useEffect(() => {
+    const hls = hlsRef.current;
+    if (!hls) return;
+    hls.currentLevel = manualLevel;
+  }, [manualLevel]);
+
+  /**
+   * Quality options.
+   *
+   * Hidden entirely when the stream offers fewer than two renditions, which is
+   * the common case for these channels — a picker with one entry is noise.
+   * Sorted tallest first so the list reads the way a viewer expects.
+   */
+  const qualityOptions: TrackOption[] | undefined = React.useMemo(() => {
+    if (qualityLevels.length < 2) return undefined;
+
+    const describe = (level: QualityLevel) => {
+      const height = level.height ? `${level.height}p` : `Seviye ${level.index + 1}`;
+      const rate = level.bitrate ? `${Math.round(level.bitrate / 1000)} kbps` : null;
+      return { label: height, detail: rate };
+    };
+
+    const auto = qualityLevels.find((level) => level.index === activeLevel);
+    return [
+      {
+        id: "-1",
+        label: "Otomatik",
+        detail: auto?.height ? `şu an ${auto.height}p` : null,
+      },
+      ...[...qualityLevels]
+        .sort((a, b) => (b.height ?? 0) - (a.height ?? 0))
+        .map((level) => ({ id: String(level.index), ...describe(level) })),
+    ];
+  }, [qualityLevels, activeLevel]);
+
   const handleSubtitleFile = React.useCallback((file: File) => {
     void file.text().then((text) => {
       const cues = parseSubtitles(text);
@@ -1220,6 +1292,9 @@ export function VideoPlayer({
           onLoadSubtitleFile={live ? undefined : () => subtitleFileRef.current?.click()}
           busy={state.status === "loading"}
           streamInfo={streamInfo}
+          qualityTracks={qualityOptions}
+          activeQualityId={String(manualLevel)}
+          onSelectQuality={(id) => setManualLevel(Number(id))}
         />
       ) : null}
 
