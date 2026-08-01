@@ -20,7 +20,7 @@ import { useSleepTimerStore } from "@/stores/sleep-timer-store";
 import { getDesktopBridge, isDesktop, isHttpsPage, type TranscodeSession } from "@/lib/platform";
 import { diagnoseStream, type StreamDiagnosis } from "@/lib/diagnose-stream";
 import { useSettingsStore } from "@/stores/settings-store";
-import { initialsOf } from "@/lib/format";
+import { formatDuration, initialsOf } from "@/lib/format";
 
 export interface VideoPlayerProps {
   url: string | null;
@@ -176,7 +176,13 @@ export function VideoPlayer({
   const [externalName, setExternalName] = React.useState<string | null>(null);
   const [externalActive, setExternalActive] = React.useState(false);
   const [activeCueText, setActiveCueText] = React.useState<string | null>(null);
+  /** Manual subtitle sync correction, in milliseconds. */
+  const [subtitleDelayMs, setSubtitleDelayMs] = React.useState(0);
   const [videoSize, setVideoSize] = React.useState<{ width: number; height: number } | null>(null);
+  /** Holds the pre-seek picture while the decoder restarts. */
+  const freezeRef = React.useRef<HTMLCanvasElement>(null);
+  const [frozen, setFrozen] = React.useState(false);
+
   /**
    * Renditions the manifest offers, and which one is on screen.
    *
@@ -484,6 +490,7 @@ export function VideoPlayer({
     setExternalCues(null);
     setExternalName(null);
     setExternalActive(false);
+    setSubtitleDelayMs(0);
 
     if (!url || !bridge || live) return;
     if (isBrowserPlayableSource(url)) return;
@@ -555,17 +562,51 @@ export function VideoPlayer({
 
   const seekDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleTranscodeSeek = React.useCallback((seconds: number) => {
-    const target = Math.max(0, Math.floor(seconds));
+  /**
+   * Copies the frame on screen into a canvas.
+   *
+   * Restarting ffmpeg takes a few seconds, during which the media element has
+   * no data and paints black — which reads as a crash rather than a wait.
+   * Holding the last frame instead makes the delay legible. Only drawing is
+   * needed, never reading pixels back, so the canvas being tainted by the
+   * cross-origin local stream does not matter.
+   */
+  const captureFrame = React.useCallback((): boolean => {
+    const video = videoRef.current;
+    const canvas = freezeRef.current;
+    if (!video || !canvas || video.videoWidth === 0) return false;
 
-    setVirtualPosition(target);
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
 
-    if (seekDebounceRef.current) clearTimeout(seekDebounceRef.current);
-    seekDebounceRef.current = setTimeout(() => {
-      seekDebounceRef.current = null;
-      setSeekOffset(target);
-    }, SEEK_DEBOUNCE_MS);
+    const context = canvas.getContext("2d");
+    if (!context) return false;
+
+    try {
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      return true;
+    } catch {
+      return false;
+    }
   }, []);
+
+  const handleTranscodeSeek = React.useCallback(
+    (seconds: number) => {
+      const target = Math.max(0, Math.floor(seconds));
+
+      setVirtualPosition(target);
+
+      if (seekDebounceRef.current) clearTimeout(seekDebounceRef.current);
+      seekDebounceRef.current = setTimeout(() => {
+        seekDebounceRef.current = null;
+        // Grabbed at commit time rather than on every drag frame; the picture
+        // is still the pre-seek one and the copy costs nothing until now.
+        if (captureFrame()) setFrozen(true);
+        setSeekOffset(target);
+      }, SEEK_DEBOUNCE_MS);
+    },
+    [captureFrame],
+  );
 
   React.useEffect(() => {
     return () => {
@@ -1002,7 +1043,7 @@ export function VideoPlayer({
     let lastText: string | null = null;
     const tick = () => {
       const time = externalActive && transcode ? seekOffset + video.currentTime : video.currentTime;
-      const text = findCueAt(cues, time)?.text ?? null;
+      const text = findCueAt(cues, time - subtitleDelayMs / 1000)?.text ?? null;
 
       if (text !== lastText) {
         lastText = text;
@@ -1016,7 +1057,7 @@ export function VideoPlayer({
       clearInterval(timer);
       setActiveCueText(null);
     };
-  }, [externalActive, externalCues, embeddedCues, embeddedIsText, seekOffset, transcode]);
+  }, [externalActive, externalCues, embeddedCues, embeddedIsText, seekOffset, transcode, subtitleDelayMs]);
 
   React.useEffect(() => {
     const video = videoRef.current;
@@ -1073,7 +1114,21 @@ export function VideoPlayer({
     setQualityLevels([]);
     setActiveLevel(-1);
     setManualLevel(-1);
+    setFrozen(false);
   }, [url]);
+
+  /**
+   * Safety net for a restart that never produces a picture.
+   *
+   * `playing` clears the held frame, but a source that fails to resume would
+   * otherwise leave a still image on screen forever, looking like a freeze
+   * rather than an error.
+   */
+  React.useEffect(() => {
+    if (!frozen) return;
+    const timer = setTimeout(() => setFrozen(false), CONNECT_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [frozen]);
 
   React.useEffect(() => {
     const hls = hlsRef.current;
@@ -1183,6 +1238,8 @@ export function VideoPlayer({
         onPlaying={() => {
           clearWaitingTimer();
           setPaused(false);
+          // The real picture is back; drop the held frame.
+          setFrozen(false);
           setState({ status: "playing" });
         }}
         onCanPlay={clearWaitingTimer}
@@ -1228,6 +1285,32 @@ export function VideoPlayer({
           <p className="min-w-0 flex-1 truncate text-sm font-medium text-white">{title}</p>
         </div>
       ) : null}
+
+      {/*
+        Always mounted so a frame can be drawn into it at the moment the seek
+        commits; only its visibility changes.
+      */}
+      <div
+        aria-hidden={!frozen}
+        className={cn(
+          "pointer-events-none absolute inset-0 z-10",
+          "transition-opacity duration-base ease-brand",
+          frozen ? "opacity-100" : "opacity-0",
+        )}
+      >
+        <canvas ref={freezeRef} className="size-full bg-black object-contain" />
+
+        {frozen ? (
+          <div className="absolute inset-0 grid place-items-center bg-black/45">
+            <div className="flex flex-col items-center gap-2.5">
+              <Loader2 className="size-6 animate-spin text-white/80" />
+              <p className="tabular text-sm text-white/80">
+                {formatDuration(virtualPosition)} konumuna atlanıyor
+              </p>
+            </div>
+          </div>
+        ) : null}
+      </div>
 
       {url && !live ? (
         <SubtitleOverlay
@@ -1295,10 +1378,14 @@ export function VideoPlayer({
           qualityTracks={qualityOptions}
           activeQualityId={String(manualLevel)}
           onSelectQuality={(id) => setManualLevel(Number(id))}
+          subtitleDelayMs={subtitleDelayMs}
+          onSubtitleDelayChange={(delta) =>
+            setSubtitleDelayMs((current) => (delta === 0 ? 0 : current + delta))
+          }
         />
       ) : null}
 
-      {state.status === "loading" ? (
+      {state.status === "loading" && !frozen ? (
         <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/45">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="size-6 animate-spin text-white/80" />

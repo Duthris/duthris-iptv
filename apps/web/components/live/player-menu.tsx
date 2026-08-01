@@ -35,6 +35,9 @@ export interface PlayerMenuProps {
   qualityTracks?: TrackOption[];
   activeQualityId?: string | null;
   onSelectQuality?: (id: string) => void;
+
+  subtitleDelayMs?: number;
+  onSubtitleDelayChange?: (deltaMs: number) => void;
 }
 
 const ASPECT_OPTIONS: Array<{ value: AspectRatioMode; label: string }> = [
@@ -155,6 +158,8 @@ export function PlayerMenu({
   qualityTracks,
   activeQualityId,
   onSelectQuality,
+  subtitleDelayMs = 0,
+  onSubtitleDelayChange,
 }: PlayerMenuProps) {
   const aspectRatio = useSettingsStore((state) => state.aspectRatio);
   const setAspectRatio = useSettingsStore((state) => state.setAspectRatio);
@@ -339,6 +344,31 @@ export function PlayerMenu({
               >
                 Arka plan
               </Chip>
+            </div>
+          ) : null}
+
+          {/*
+            Sync correction. Embedded tracks are usually right, but a subtitle
+            file downloaded for a different release is routinely a second or
+            two out, and nothing else in the player can fix that.
+          */}
+          {activeSubtitleId && onSubtitleDelayChange ? (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <span className="text-2xs text-white/40">Gecikme</span>
+              <Chip active={false} onClick={() => onSubtitleDelayChange(-500)}>
+                −0,5 sn
+              </Chip>
+              <Chip active={subtitleDelayMs === 0} onClick={() => onSubtitleDelayChange(0)}>
+                {subtitleDelayMs === 0
+                  ? "0"
+                  : `${subtitleDelayMs > 0 ? "+" : "−"}${(Math.abs(subtitleDelayMs) / 1000).toFixed(1)} sn`}
+              </Chip>
+              <Chip active={false} onClick={() => onSubtitleDelayChange(500)}>
+                +0,5 sn
+              </Chip>
+              <span className="w-full text-2xs text-white/40">
+                Altyazı erken çıkıyorsa artır, geç çıkıyorsa azalt. Ortadaki değere basmak sıfırlar.
+              </span>
             </div>
           ) : null}
         </Section>

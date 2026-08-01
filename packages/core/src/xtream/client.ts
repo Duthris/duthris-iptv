@@ -7,8 +7,10 @@ import {
   normalizeEpisodes,
   normalizeLiveStreams,
   normalizeSeries,
+  normalizeShortEpg,
   normalizeVodInfo,
   normalizeVodStreams,
+  type ShortEpgProgramme,
   type VodInfo,
 } from "./normalize.js";
 import {
@@ -181,6 +183,25 @@ export class XtreamClient {
 
   getShortEpg(streamId: number | string, limit = 4, options?: FetchOptions) {
     return this.call<unknown>("get_short_epg", { stream_id: streamId, limit }, options);
+  }
+
+  /**
+   * Upcoming programmes for one channel, straight from the panel.
+   *
+   * Fills the gap for channels the XMLTV guide does not cover: measured on the
+   * live account, only 994 of 17.005 channels carry an `epg_channel_id` at all,
+   * and a channel missing from the XMLTV file otherwise shows nothing.
+   *
+   * Titles and descriptions come back base64 encoded, and some panels return a
+   * short window with no programmes rather than an error.
+   */
+  async getChannelProgrammes(
+    streamId: number | string,
+    limit = 4,
+    options?: FetchOptions,
+  ): Promise<ShortEpgProgramme[]> {
+    const raw = await this.getShortEpg(streamId, limit, options);
+    return normalizeShortEpg(raw);
   }
 
   get xmltvUrl(): string {

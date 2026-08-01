@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { ListVideo, PanelLeftClose, PanelLeftOpen, Radio } from "lucide-react";
 import { toast } from "sonner";
-import type { CategoryListItem, ChannelListItem } from "@iptv/db";
+import type { CategoryListItem, ChannelListItem, NowNext } from "@iptv/db";
 import { countLiveChannels, listCategories, listLiveChannels, updateSource } from "@iptv/db";
 import { Button, EmptyState, cn } from "@iptv/ui";
 
@@ -14,6 +14,7 @@ import { ChannelList } from "@/components/live/channel-list";
 import { ChannelNumberEntry } from "@/components/live/channel-number-entry";
 import { useChannelNumberEntry } from "@/lib/use-channel-number-entry";
 import { useLiveWatch } from "@/lib/use-live-watch";
+import { loadShortEpg } from "@/lib/short-epg";
 import { FavoriteButton } from "@/components/library/favorite-button";
 import { NowPlaying } from "@/components/live/now-playing";
 import { VideoPlayer } from "@/components/live/video-player";
@@ -55,6 +56,29 @@ export default function LivePage() {
   const epg = useEpg(sourcesLoaded);
 
   useLiveWatch(current, profile?.id ?? null, playerPlaying);
+
+  const xmltvNowNext = current ? (epg.byChannelId.get(current.id) ?? null) : null;
+  const [panelNowNext, setPanelNowNext] = React.useState<NowNext | null>(null);
+
+  /**
+   * Falls back to the panel's own guide when the XMLTV file has nothing for
+   * this channel, which is the case for the large majority of them.
+   */
+  React.useEffect(() => {
+    setPanelNowNext(null);
+    if (!current || xmltvNowNext) return;
+
+    let cancelled = false;
+    void loadShortEpg(current.id).then((result) => {
+      if (!cancelled) setPanelNowNext(result);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [current, xmltvNowNext]);
+
+  const nowNext = xmltvNowNext ?? panelNowNext;
 
   const sourceKey = sourceIds.join("|");
 
@@ -285,7 +309,7 @@ export default function LivePage() {
                 onNext={channels.length > 1 ? () => playRelative(1) : undefined}
                 previousLabel="Önceki kanal"
                 nextLabel="Sonraki kanal"
-                mediaSubtitle={epg.byChannelId.get(current?.id ?? "")?.now?.title ?? null}
+                mediaSubtitle={nowNext?.now?.title ?? null}
                 onPlayingChange={setPlayerPlaying}
                 overlay={
                   <ChannelNumberEntry digits={numberEntry.digits} notFound={numberEntry.notFound} />
@@ -298,7 +322,7 @@ export default function LivePage() {
               <div className="flex shrink-0 items-start justify-between gap-4">
                 <NowPlaying
                   channelName={current.name}
-                  nowNext={epg.byChannelId.get(current.id)}
+                  nowNext={nowNext ?? undefined}
                   guideLoaded={epg.loaded && !epg.empty}
                   className="min-w-0 flex-1"
                 />
