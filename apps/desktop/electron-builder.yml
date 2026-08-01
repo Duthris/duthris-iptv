@@ -53,3 +53,5 @@ publish:
   provider: github
   owner: Duthris
   repo: duthris-iptv
+  # Publish straight to a visible release; the default leaves it as a draft.
+  releaseType: release
