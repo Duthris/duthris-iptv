@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowRight, Film, ListVideo, Radio, RefreshCw, Tv } from "lucide-react";
+import { AlertTriangle, ArrowRight, Film, ListVideo, Radio, RefreshCw, Tv } from "lucide-react";
 import {
   Badge,
   Card,
@@ -16,6 +16,7 @@ import {
 
 import { AppShell } from "@/components/app-shell";
 import { ChannelShortcuts } from "@/components/home/channel-shortcuts";
+import { daysUntilExpiry, expiryTone } from "@/components/playlist/subscription-status";
 import { WelcomeHero } from "@/components/welcome-hero";
 import { usePlaylistStore } from "@/stores/playlist-store";
 import { useActiveProfile } from "@/stores/profile-store";
@@ -97,6 +98,15 @@ export default function HomePage() {
     );
   }, [sources]);
 
+  const expiringSoon = React.useMemo(
+    () =>
+      sources.filter((source) => {
+        const tone = expiryTone(daysUntilExpiry(source.subscription));
+        return tone === "warning" || tone === "expired";
+      }),
+    [sources],
+  );
+
   if (!loaded) {
     return (
       <AppShell>
@@ -131,6 +141,29 @@ export default function HomePage() {
             {lastRefresh ? ` · son güncelleme ${formatRelative(lastRefresh)}` : ""}
           </p>
         </header>
+
+        {expiringSoon.length > 0 ? (
+          <Link
+            href="/playlists"
+            className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/[0.07] p-4 transition-colors duration-fast hover:bg-warning/[0.12]"
+          >
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
+            <span className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium text-foreground">
+                {expiringSoon.length === 1
+                  ? `"${expiringSoon[0]?.name}" aboneliği ${
+                      daysUntilExpiry(expiringSoon[0]?.subscription ?? null)! < 0
+                        ? "sona erdi"
+                        : "yakında sona eriyor"
+                    }`
+                  : `${expiringSoon.length} kaynağın aboneliği yakında sona eriyor`}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Ayrıntılar için Playlistler ekranına git.
+              </span>
+            </span>
+          </Link>
+        ) : null}
 
         <ChannelShortcuts profileId={profile?.id ?? null} />
 

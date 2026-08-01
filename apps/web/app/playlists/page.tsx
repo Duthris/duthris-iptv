@@ -25,6 +25,7 @@ import { Badge, Button, Card, EmptyState, Progress, cn } from "@iptv/ui";
 import { AppShell } from "@/components/app-shell";
 import { AddPlaylistForm } from "@/components/playlist/add-playlist-form";
 import { SegmentedControl } from "@/components/playlist/segmented-control";
+import { SubscriptionStatus } from "@/components/playlist/subscription-status";
 import { importEpg, refreshSource } from "@/lib/import/import-source";
 import { clearCredentialCache } from "@/lib/resolve-stream";
 import { usePlaylistStore } from "@/stores/playlist-store";
@@ -170,6 +171,8 @@ function SourceCard({
           ))}
         </dl>
       ) : null}
+
+      <SubscriptionStatus subscription={source.subscription} />
 
       {source.lastError ? (
         <div className="border-destructive/25 bg-destructive/[0.06] flex items-start gap-2.5 rounded-md border p-3">

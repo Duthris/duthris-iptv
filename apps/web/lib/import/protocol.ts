@@ -1,4 +1,6 @@
-import type { ParseProgress, SourceStats, StreamEndpoints, StreamFormat } from "@iptv/core";
+import type { ParseProgress, SourceStats, StreamEndpoints, StreamFormat ,
+  SourceSubscription,
+} from "@iptv/core";
 
 export type ImportRequest =
   | {
@@ -44,6 +46,7 @@ export type ImportResponse =
       epgUrl: string | null;
 
       streamEndpoints: StreamEndpoints | null;
+      subscription?: SourceSubscription | null;
     }
   | {
       type: "epg-done";

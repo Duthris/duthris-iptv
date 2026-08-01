@@ -4,6 +4,7 @@ import {
   createId,
   type ParseProgress,
   type SourceStats,
+  type SourceSubscription,
   type StreamEndpoints,
   type StreamFormat,
 } from "@iptv/core";
@@ -45,6 +46,7 @@ function runImport(
   warnings: string[];
   epgUrl: string | null;
   streamEndpoints: StreamEndpoints | null;
+  subscription: SourceSubscription | null;
 }> {
   return new Promise((resolve, reject) => {
     const requestId = createId("imp");
@@ -69,6 +71,7 @@ function runImport(
             warnings: message.warnings,
             epgUrl: message.epgUrl,
             streamEndpoints: message.streamEndpoints,
+            subscription: message.subscription ?? null,
           });
           break;
         case "error":
@@ -96,11 +99,11 @@ async function withSource(
   callbacks.onSourceCreated?.(source.id);
 
   try {
-    const { stats, warnings, epgUrl, streamEndpoints } = await runImport(
+    const { stats, warnings, epgUrl, streamEndpoints, subscription } = await runImport(
       build(source.id),
       callbacks,
     );
-    await markSourceSuccess(source.id, stats, streamEndpoints);
+    await markSourceSuccess(source.id, stats, streamEndpoints, subscription);
     if (epgUrl && !source.epgUrl) await updateSource(source.id, { epgUrl });
     return { sourceId: source.id, stats, warnings };
   } catch (error) {
@@ -233,8 +236,8 @@ export async function refreshSource(
   }
 
   try {
-    const { stats, warnings, streamEndpoints } = await runImport(request, callbacks);
-    await markSourceSuccess(sourceId, stats, streamEndpoints);
+    const { stats, warnings, streamEndpoints, subscription } = await runImport(request, callbacks);
+    await markSourceSuccess(sourceId, stats, streamEndpoints, subscription);
     return { sourceId, stats, warnings };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Bilinmeyen hata";

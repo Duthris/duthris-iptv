@@ -135,6 +135,14 @@ async function handleXtream(request: Extract<ImportRequest, { type: "import-xtre
     warnings,
     epgUrl: playlist.epgUrl,
     streamEndpoints: account.endpoints,
+    subscription: {
+      status: account.status,
+      isTrial: account.isTrial,
+      expiresAt: account.expiresAt,
+      maxConnections: account.maxConnections,
+      activeConnections: account.activeConnections,
+      checkedAt: Date.now(),
+    },
   });
 }
 
