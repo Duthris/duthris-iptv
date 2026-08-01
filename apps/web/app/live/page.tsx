@@ -13,6 +13,7 @@ import { ALL_CATEGORIES, CategoryPanel } from "@/components/live/category-panel"
 import { ChannelList } from "@/components/live/channel-list";
 import { ChannelNumberEntry } from "@/components/live/channel-number-entry";
 import { useChannelNumberEntry } from "@/lib/use-channel-number-entry";
+import { useLiveWatch } from "@/lib/use-live-watch";
 import { FavoriteButton } from "@/components/library/favorite-button";
 import { NowPlaying } from "@/components/live/now-playing";
 import { VideoPlayer } from "@/components/live/video-player";
@@ -50,7 +51,10 @@ export default function LivePage() {
   const [fallbackTsUrl, setFallbackTsUrl] = React.useState<string | null>(null);
   const [panelOpen, setPanelOpen] = React.useState(true);
   const [protocolFix, setProtocolFix] = React.useState(0);
+  const [playerPlaying, setPlayerPlaying] = React.useState(false);
   const epg = useEpg(sourcesLoaded);
+
+  useLiveWatch(current, profile?.id ?? null, playerPlaying);
 
   const sourceKey = sourceIds.join("|");
 
@@ -282,6 +286,7 @@ export default function LivePage() {
                 previousLabel="Önceki kanal"
                 nextLabel="Sonraki kanal"
                 mediaSubtitle={epg.byChannelId.get(current?.id ?? "")?.now?.title ?? null}
+                onPlayingChange={setPlayerPlaying}
                 overlay={
                   <ChannelNumberEntry digits={numberEntry.digits} notFound={numberEntry.notFound} />
                 }

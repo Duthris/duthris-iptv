@@ -50,6 +50,8 @@ export interface VideoPlayerProps {
   nextLabel?: string;
 
   mediaSubtitle?: string | null;
+  /** Fires whenever playback starts or stops, for watch tracking. */
+  onPlayingChange?: (playing: boolean) => void;
   className?: string;
 }
 
@@ -132,6 +134,7 @@ export function VideoPlayer({
   previousLabel,
   nextLabel,
   mediaSubtitle,
+  onPlayingChange,
   className,
 }: VideoPlayerProps) {
   const videoRef = React.useRef<HTMLVideoElement>(null);
@@ -758,6 +761,10 @@ export function VideoPlayer({
   });
 
   useMediaSessionState(paused, Boolean(url));
+
+  React.useEffect(() => {
+    onPlayingChange?.(Boolean(url) && !paused);
+  }, [paused, url, onPlayingChange]);
 
   React.useEffect(() => {
     if (!url) return;

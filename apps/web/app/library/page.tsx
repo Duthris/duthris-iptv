@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Clock, Heart, History, Library, Trash2 } from "lucide-react";
+import { BarChart3, Clock, Heart, History, Library, Trash2 } from "lucide-react";
 import { clearHistory, getLiveChannel } from "@iptv/db";
 import { Badge, Button, EmptyState, Skeleton, cn } from "@iptv/ui";
 import { toast } from "sonner";
@@ -11,18 +11,20 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { MovieDetail } from "@/components/library/movie-detail";
 import { SeriesDetail } from "@/components/library/series-detail";
+import { WatchStatsPanel } from "@/components/library/watch-stats";
 import { SegmentedControl } from "@/components/playlist/segmented-control";
 import { loadContinueWatching, loadFavorites, loadHistory, type LibraryEntry } from "@/lib/library";
 import { useActiveProfile } from "@/stores/profile-store";
 import { usePlayerStore } from "@/stores/player-store";
 import { formatCount, formatDuration, initialsOf } from "@/lib/format";
 
-type Tab = "continue" | "favorites" | "history";
+type Tab = "continue" | "favorites" | "history" | "stats";
 
 const TABS = [
   { value: "continue" as const, label: "İzlemeye devam et", icon: Clock },
   { value: "favorites" as const, label: "Favoriler", icon: Heart },
   { value: "history" as const, label: "Geçmiş", icon: History },
+  { value: "stats" as const, label: "İstatistikler", icon: BarChart3 },
 ];
 
 const KIND_LABEL: Record<LibraryEntry["kind"], string> = {
@@ -117,6 +119,11 @@ export default function LibraryPage() {
 
   const load = React.useCallback(async () => {
     if (!profile) return;
+    if (tab === "stats") {
+      setEntries([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const data =
       tab === "favorites"
@@ -160,7 +167,7 @@ export default function LibraryPage() {
   }
 
   const emptyCopy: Record<
-    Tab,
+    Exclude<Tab, "stats">,
     { title: string; description: string; links: Array<{ href: string; label: string }> }
   > = {
     continue: {
@@ -225,7 +232,9 @@ export default function LibraryPage() {
           aria-label="Kitaplık bölümü"
         />
 
-        {loading ? (
+        {tab === "stats" ? (
+          <WatchStatsPanel profileId={profile?.id ?? null} />
+        ) : loading ? (
           <div className="flex flex-col gap-3">
             {Array.from({ length: 6 }).map((_, index) => (
               <Skeleton key={index} className="h-[88px] rounded-lg" />

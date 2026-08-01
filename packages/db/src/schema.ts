@@ -15,7 +15,7 @@ import type {
 import type { MatchConfidence } from "@iptv/core";
 
 export const DB_NAME = "duthris-iptv";
-export const DB_VERSION = 4;
+export const DB_VERSION = 5;
 
 export interface StoredCredential {
   id: string;
@@ -101,6 +101,21 @@ export class IptvDatabase extends Dexie {
     this.version(4).stores({
       tmdbCache: "id, kind, tmdbId, fetchedAt",
     });
+
+    this.version(5)
+      .stores({
+        watchHistory:
+          "id, profileId, itemId, watchedAt, playCount, totalSecs, [profileId+watchedAt], [profileId+kind]",
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table<WatchHistoryEntry>("watchHistory")
+          .toCollection()
+          .modify((entry) => {
+            entry.playCount ??= 1;
+            entry.totalSecs ??= 0;
+          });
+      });
   }
 }
 

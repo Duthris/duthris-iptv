@@ -15,6 +15,7 @@ import {
 } from "@iptv/ui";
 
 import { AppShell } from "@/components/app-shell";
+import { ChannelShortcuts } from "@/components/home/channel-shortcuts";
 import { WelcomeHero } from "@/components/welcome-hero";
 import { usePlaylistStore } from "@/stores/playlist-store";
 import { useActiveProfile } from "@/stores/profile-store";
@@ -130,6 +131,8 @@ export default function HomePage() {
             {lastRefresh ? ` · son güncelleme ${formatRelative(lastRefresh)}` : ""}
           </p>
         </header>
+
+        <ChannelShortcuts profileId={profile?.id ?? null} />
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <LibraryCard
