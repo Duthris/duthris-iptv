@@ -1,0 +1,50 @@
+appId: dev.duthris.iptv
+productName: Duthris IPTV
+copyright: Duthris
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - "!**/*.map"
+
+extraResources:
+  - from: ../web/out
+    to: renderer
+    filter: ["**/*"]
+
+asar: true
+
+asarUnpack:
+  - "**/node_modules/ffmpeg-static/**"
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
+  icon: build/icon.ico
+
+  signAndEditExecutable: true
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Duthris IPTV
+
+  installerIcon: build/installerIcon.ico
+  uninstallerIcon: build/uninstallerIcon.ico
+  installerHeaderIcon: build/icon.ico
+  installerSidebar: build/installerSidebar.bmp
+  uninstallerSidebar: build/uninstallerSidebar.bmp
+
+portable:
+  artifactName: ${productName}-${version}-portable.${ext}

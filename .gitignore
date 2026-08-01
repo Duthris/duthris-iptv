@@ -1,0 +1,36 @@
+node_modules/
+.turbo/
+dist/
+out/
+.next/
+.next-desktop/
+*.tsbuildinfo
+
+build/
+# The generated icon set is committed, so packaging works without sharp.
+!apps/desktop/build/
+!apps/desktop/build/**
+
+.env
+.env.local
+.env.*.local
+
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+apps/desktop/release/
+apps/desktop/dist-electron/
+
+# Playlists and credentials never belong in the repository.
+*.m3u
+*.m3u8
+!apps/**/public/**/*.m3u8
+secrets.json
+
+# Working notes, not part of the product.
+CLAUDE.md
+BACKLOG.md
+NOTES.md

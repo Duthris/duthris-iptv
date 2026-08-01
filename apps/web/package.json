@@ -1,0 +1,48 @@
+{
+  "name": "@iptv/web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "build:desktop": "cross-env BUILD_TARGET=desktop next build",
+    "start": "next start",
+    "lint": "next lint --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf .next .next-desktop out .turbo"
+  },
+  "dependencies": {
+    "@iptv/core": "workspace:*",
+    "@iptv/db": "workspace:*",
+    "@iptv/ui": "workspace:*",
+    "@tanstack/react-virtual": "^3.10.8",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "dexie": "^4.0.8",
+    "hls.js": "^1.5.15",
+    "lucide-react": "^0.446.0",
+    "mpegts.js": "1.7.3",
+    "next": "^14.2.15",
+    "next-themes": "^0.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sonner": "^1.5.0",
+    "tailwind-merge": "^2.5.2",
+    "zod": "^3.23.8",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@iptv/config": "workspace:*",
+    "@types/node": "^20.14.10",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.20",
+    "cross-env": "^7.0.3",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.15",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.5.4"
+  }
+}

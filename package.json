@@ -1,0 +1,34 @@
+{
+  "name": "duthris-iptv",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.18.0",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "verify": "turbo run typecheck lint build && pnpm run build:renderer",
+    "verify:quick": "turbo run typecheck lint build",
+    "build:renderer": "pnpm --filter @iptv/web run build:desktop",
+    "icons": "node tools/generate-icons.mjs",
+    "package:win": "pnpm run build:renderer && pnpm --filter @iptv/desktop run package",
+    "clean": "turbo run clean && rimraf node_modules"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "png-to-ico": "^3.0.2",
+    "prettier": "^3.3.3",
+    "prettier-plugin-tailwindcss": "^0.6.6",
+    "rimraf": "^6.0.1",
+    "sharp": "^0.35.3",
+    "turbo": "^2.5.8",
+    "typescript": "^5.5.4"
+  },
+  "author": "Duthris",
+  "license": "MIT",
+  "description": "Local-first IPTV player for Windows."
+}

@@ -1,0 +1,13 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# unrs-resolver: eslint-config-next'in kullandığı native modül çözümleyici.
+# Kurulum betiği platforma uygun binary'yi indirir, çalışmazsa lint bozulur.
+# electron: kurulum betiği platforma uygun Electron binary'sini indirir.
+# ffmpeg-static: kurulum betiği platforma uygun ffmpeg binary'sini indirir.
+allowBuilds:
+  electron: true
+  esbuild: true
+  ffmpeg-static: true
+  unrs-resolver: true

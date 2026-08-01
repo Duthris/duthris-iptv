@@ -1,0 +1,10 @@
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.bmp binary
+*.exe binary
+
+pnpm-lock.yaml -diff linguist-generated
+packages/ui/src/styles/tokens.css linguist-generated
