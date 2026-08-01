@@ -31,6 +31,10 @@ export interface PlayerMenuProps {
   busy?: boolean;
 
   streamInfo?: Array<{ label: string; value: string }>;
+
+  qualityTracks?: TrackOption[];
+  activeQualityId?: string | null;
+  onSelectQuality?: (id: string) => void;
 }
 
 const ASPECT_OPTIONS: Array<{ value: AspectRatioMode; label: string }> = [
@@ -148,6 +152,9 @@ export function PlayerMenu({
   onLoadSubtitleFile,
   busy = false,
   streamInfo,
+  qualityTracks,
+  activeQualityId,
+  onSelectQuality,
 }: PlayerMenuProps) {
   const aspectRatio = useSettingsStore((state) => state.aspectRatio);
   const setAspectRatio = useSettingsStore((state) => state.setAspectRatio);
@@ -239,6 +246,22 @@ export function PlayerMenu({
               >
                 {rate}x
               </Chip>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
+      {qualityTracks && qualityTracks.length > 1 && onSelectQuality ? (
+        <Section icon={<Gauge />} title="Kalite">
+          <div className="flex flex-col gap-0.5">
+            {qualityTracks.map((track) => (
+              <TrackRow
+                key={track.id}
+                active={track.id === activeQualityId}
+                label={track.label}
+                detail={track.detail}
+                onClick={() => onSelectQuality(track.id)}
+              />
             ))}
           </div>
         </Section>
