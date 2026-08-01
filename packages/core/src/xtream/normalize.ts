@@ -287,3 +287,54 @@ export function applyCategoryCounts(
     category.itemCount = counts.get(category.rawId) ?? 0;
   }
 }
+
+export interface ShortEpgProgramme {
+  start: number;
+  stop: number;
+  title: string;
+  desc: string | null;
+}
+
+function decodeBase64(value: unknown): string | null {
+  const text = asString(value);
+  if (!text) return null;
+
+  try {
+    const binary =
+      typeof atob === "function"
+        ? atob(text)
+        : Buffer.from(text, "base64").toString("binary");
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const decoded = new TextDecoder("utf-8").decode(bytes);
+    return decoded.trim() || null;
+  } catch {
+    return text;
+  }
+}
+
+export function normalizeShortEpg(raw: unknown): ShortEpgProgramme[] {
+  const root = asRecord(raw);
+  const listings = root?.["epg_listings"];
+  if (!Array.isArray(listings)) return [];
+
+  const programmes: ShortEpgProgramme[] = [];
+
+  for (const entry of listings) {
+    const row = asRecord(entry);
+    if (!row) continue;
+
+    const start = asInt(row["start_timestamp"]);
+    const stop = asInt(row["stop_timestamp"]);
+    const title = decodeBase64(row["title"]);
+    if (start === null || stop === null || !title || stop <= start) continue;
+
+    programmes.push({
+      start: start * 1000,
+      stop: stop * 1000,
+      title,
+      desc: decodeBase64(row["description"]),
+    });
+  }
+
+  return programmes.sort((a, b) => a.start - b.start);
+}
