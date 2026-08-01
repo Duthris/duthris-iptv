@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { AudioLines, Captions, FileUp, Gauge, Info, Moon, Ratio } from "lucide-react";
+import { AudioLines, Captions, FileUp, Gauge, Info, Moon, Ratio, RotateCcw } from "lucide-react";
 import { Spinner, cn } from "@iptv/ui";
 
 import { useSettingsStore, type AspectRatioMode } from "@/stores/settings-store";
@@ -355,19 +355,52 @@ export function PlayerMenu({
           {activeSubtitleId && onSubtitleDelayChange ? (
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <span className="text-2xs text-white/40">Gecikme</span>
+
               <Chip active={false} onClick={() => onSubtitleDelayChange(-500)}>
                 −0,5 sn
               </Chip>
-              <Chip active={subtitleDelayMs === 0} onClick={() => onSubtitleDelayChange(0)}>
+
+              {/*
+                A readout, not a control. It was a chip identical to the two
+                buttons around it, so at +0,5 it looked exactly like the
+                increment next to it while actually resetting.
+              */}
+              <span
+                className={cn(
+                  "tabular min-w-16 rounded-md px-2 py-1 text-center text-2xs font-semibold",
+                  "border border-dashed",
+                  subtitleDelayMs === 0
+                    ? "border-white/15 text-white/45"
+                    : "border-primary/50 bg-primary/15 text-white",
+                )}
+              >
                 {subtitleDelayMs === 0
-                  ? "0"
+                  ? "0 sn"
                   : `${subtitleDelayMs > 0 ? "+" : "−"}${(Math.abs(subtitleDelayMs) / 1000).toFixed(1)} sn`}
-              </Chip>
+              </span>
+
               <Chip active={false} onClick={() => onSubtitleDelayChange(500)}>
                 +0,5 sn
               </Chip>
+
+              {subtitleDelayMs !== 0 ? (
+                <button
+                  type="button"
+                  onClick={() => onSubtitleDelayChange(0)}
+                  aria-label="Gecikmeyi sıfırla"
+                  title="Sıfırla"
+                  className={cn(
+                    "grid size-6 place-items-center rounded-md text-white/60",
+                    "transition-colors duration-fast hover:bg-white/15 hover:text-white",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60",
+                  )}
+                >
+                  <RotateCcw className="size-3" />
+                </button>
+              ) : null}
+
               <span className="w-full text-2xs text-white/40">
-                Altyazı erken çıkıyorsa artır, geç çıkıyorsa azalt. Ortadaki değere basmak sıfırlar.
+                Altyazı erken çıkıyorsa artır, geç çıkıyorsa azalt.
               </span>
             </div>
           ) : null}
