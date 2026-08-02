@@ -55,7 +55,10 @@ export interface ShellSettings {
   minimiseToTray: boolean;
   launchAtStartup: boolean;
   alwaysOnTop: boolean;
+  globalMediaKeys: boolean;
 }
+
+export type MediaKeyCommand = "playpause" | "next" | "previous" | "stop";
 
 export type DownloadStatus = "downloading" | "done" | "failed" | "cancelled";
 
@@ -112,6 +115,9 @@ export interface DesktopBridge {
     { ok: true; body: string; fromCache: boolean } | { ok: false; message: string; status: number }
   >;
   xtreamClearCache(): Promise<void>;
+
+  /** Media keys pressed while the app is in the background. */
+  onMediaKey(handler: (command: MediaKeyCommand) => void): () => void;
 
   /** Loopback page that hosts the embed, so it has a real http origin. */
   trailerEmbedUrl(videoId: string): Promise<string>;

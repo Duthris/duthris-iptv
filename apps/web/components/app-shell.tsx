@@ -23,6 +23,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useActiveProfile } from "@/stores/profile-store";
 import { usePlaylistStore } from "@/stores/playlist-store";
 import { initialsOf } from "@/lib/format";
+import { useReminderWatcher } from "@/lib/use-reminders";
 
 interface NavItem {
   href: string;
@@ -208,6 +209,9 @@ export interface AppShellProps {
 export function AppShell({ children, bleed = false }: AppShellProps) {
   const pathname = usePathname();
   const [searchOpen, setSearchOpen] = React.useState(false);
+
+  // Lives in the shell so a reminder fires on whichever screen is open.
+  useReminderWatcher();
 
   React.useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

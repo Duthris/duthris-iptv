@@ -31,6 +31,7 @@ export const IPC = {
   xtreamFetch: "xtream:fetch",
   xtreamClearCache: "xtream:clear-cache",
   trailerEmbedUrl: "trailer:embed-url",
+  mediaKeyEvent: "media:key",
   listExternalPlayers: "external:list",
   pickExternalPlayer: "external:pick",
   openExternalPlayer: "external:open",
@@ -159,7 +160,11 @@ export interface ShellSettings {
   minimiseToTray: boolean;
   launchAtStartup: boolean;
   alwaysOnTop: boolean;
+  /** Claims the media keys system-wide, not only while focused. */
+  globalMediaKeys: boolean;
 }
+
+export type MediaKeyCommand = "playpause" | "next" | "previous" | "stop";
 
 export type DownloadStatus = "downloading" | "done" | "failed" | "cancelled";
 

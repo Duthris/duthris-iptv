@@ -13,6 +13,7 @@ const DEFAULTS: ShellSettings = {
   minimiseToTray: false,
   launchAtStartup: false,
   alwaysOnTop: false,
+  globalMediaKeys: false,
 };
 
 function Toggle({
@@ -154,6 +155,13 @@ export function DesktopShellSettings() {
         description="Pencere açılmadan, yalnızca tepside başlar."
         checked={current.launchAtStartup}
         onChange={(launchAtStartup) => apply({ ...current, launchAtStartup })}
+      />
+
+      <Toggle
+        label="Medya tuşlarını sistem genelinde kullan"
+        description="Klavyedeki oynat/duraklat ve ileri/geri tuşları uygulama arka plandayken de çalışır. Bu tuşlar paylaşımlıdır: açarsan müzik uygulamalarından alınır."
+        checked={current.globalMediaKeys}
+        onChange={(globalMediaKeys) => apply({ ...current, globalMediaKeys })}
       />
 
       <Toggle

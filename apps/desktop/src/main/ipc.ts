@@ -32,6 +32,7 @@ import {
 } from "./downloads.js";
 import { localFileUrl, startTranscodeServer, trailerEmbedUrl } from "./transcode.js";
 import { launchAtStartupEnabled, setLaunchAtStartup, setTrayOptions } from "./tray.js";
+import { setGlobalMediaKeys } from "./media-keys.js";
 
 const MAX_PLAYLIST_BYTES = 200 * 1024 * 1024;
 
@@ -39,6 +40,7 @@ let shellSettings: ShellSettings = {
   minimiseToTray: false,
   launchAtStartup: false,
   alwaysOnTop: false,
+  globalMediaKeys: false,
 };
 
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
@@ -169,6 +171,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.handle(IPC.setShellSettings, (_event, next: ShellSettings): void => {
     shellSettings = next;
     setTrayOptions({ minimiseToTray: next.minimiseToTray });
+    setGlobalMediaKeys(next.globalMediaKeys, getWindow);
     setLaunchAtStartup(next.launchAtStartup);
     getWindow()?.setAlwaysOnTop(next.alwaysOnTop);
     record(`shell settings: ${JSON.stringify(next)}`);

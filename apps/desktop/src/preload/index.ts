@@ -16,6 +16,7 @@ import {
   type XtreamFetchRequest,
   type XtreamFetchResult,
   type ExternalPlayer,
+  type MediaKeyCommand,
   type OpenExternalRequest,
 } from "../shared/ipc.js";
 
@@ -44,6 +45,12 @@ const bridge = {
     ipcRenderer.invoke(IPC.xtreamFetch, request),
 
   xtreamClearCache: (): Promise<void> => ipcRenderer.invoke(IPC.xtreamClearCache),
+
+  onMediaKey: (handler: (command: MediaKeyCommand) => void): (() => void) => {
+    const listener = (_event: unknown, command: MediaKeyCommand) => handler(command);
+    ipcRenderer.on(IPC.mediaKeyEvent, listener);
+    return () => ipcRenderer.removeListener(IPC.mediaKeyEvent, listener);
+  },
 
   trailerEmbedUrl: (videoId: string): Promise<string> =>
     ipcRenderer.invoke(IPC.trailerEmbedUrl, videoId),
