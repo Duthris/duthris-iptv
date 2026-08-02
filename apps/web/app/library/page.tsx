@@ -17,6 +17,7 @@ import { SegmentedControl } from "@/components/playlist/segmented-control";
 import { loadContinueWatching, loadFavorites, loadHistory, type LibraryEntry } from "@/lib/library";
 import { useActiveProfile } from "@/stores/profile-store";
 import { usePlayerStore } from "@/stores/player-store";
+import { useNavigationStore } from "@/stores/navigation-store";
 import { formatCount, formatDuration, initialsOf } from "@/lib/format";
 
 type Tab = "continue" | "favorites" | "history" | "stats" | "downloads";
@@ -114,6 +115,15 @@ export default function LibraryPage() {
   const playChannel = usePlayerStore((state) => state.playChannel);
 
   const [tab, setTab] = React.useState<Tab>("continue");
+
+  // Arriving from the home screen's "Tümü" link.
+  const consumeLibraryTab = useNavigationStore((state) => state.consumeLibraryTab);
+  React.useEffect(() => {
+    const requested = consumeLibraryTab();
+    if (requested && TABS.some((option) => option.value === requested)) {
+      setTab(requested as Tab);
+    }
+  }, [consumeLibraryTab]);
   const [entries, setEntries] = React.useState<LibraryEntry[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [movieId, setMovieId] = React.useState<string | null>(null);

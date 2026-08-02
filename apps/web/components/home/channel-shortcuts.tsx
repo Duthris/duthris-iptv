@@ -2,9 +2,14 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Flame } from "lucide-react";
+import { Clock, Flame, X } from "lucide-react";
 import type { WatchHistoryEntry } from "@iptv/core";
-import { getLiveChannel, listFrequentChannels, listRecentChannels } from "@iptv/db";
+import {
+  forgetWatchEntry,
+  getLiveChannel,
+  listFrequentChannels,
+  listRecentChannels,
+} from "@iptv/db";
 import { Skeleton, cn } from "@iptv/ui";
 import { toast } from "sonner";
 
@@ -14,24 +19,52 @@ import { usePlayerStore } from "@/stores/player-store";
 function ChannelTile({
   entry,
   onOpen,
+  onRemove,
 }: {
   entry: WatchHistoryEntry;
   onOpen: (entry: WatchHistoryEntry) => void;
+  onRemove?: (entry: WatchHistoryEntry) => void;
 }) {
   const [failed, setFailed] = React.useState(false);
 
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(entry)}
-      title={entry.title}
-      className={cn(
-        "group/tile flex w-24 shrink-0 flex-col items-center gap-2 rounded-lg p-2",
-        "transition-all duration-base ease-brand",
-        "hover:-translate-y-0.5 hover:bg-accent/40",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70",
-      )}
-    >
+    <div className="group/tile relative shrink-0">
+      {onRemove ? (
+        <button
+          type="button"
+          aria-label={`${entry.title} kanalını listeden kaldır`}
+          title="Listeden kaldır"
+          onClick={(event) => {
+            event.stopPropagation();
+            onRemove(entry);
+          }}
+          className={cn(
+            "absolute right-0.5 top-0.5 z-10 grid size-5 place-items-center rounded-full",
+            "bg-surface-3/90 text-muted-foreground backdrop-blur-sm",
+            "hover:bg-destructive hover:text-destructive-foreground",
+            // Hidden until wanted, and never in the way of a tap: it grows out
+            // of the corner rather than appearing on top of the artwork.
+            "scale-75 opacity-0 transition-all duration-base ease-brand-out",
+            "group-hover/tile:scale-100 group-hover/tile:opacity-100",
+            "focus-visible:scale-100 focus-visible:opacity-100",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70",
+          )}
+        >
+          <X className="size-3" />
+        </button>
+      ) : null}
+
+      <button
+        type="button"
+        onClick={() => onOpen(entry)}
+        title={entry.title}
+        className={cn(
+          "flex w-24 flex-col items-center gap-2 rounded-lg p-2",
+          "transition-all duration-base ease-brand",
+          "hover:-translate-y-0.5 hover:bg-accent/40",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70",
+        )}
+      >
       {entry.poster && !failed ? (
         <img
           src={entry.poster}
@@ -45,10 +78,11 @@ function ChannelTile({
           {initialsOf(entry.title)}
         </span>
       )}
-      <span className="line-clamp-2-safe w-full text-center text-2xs leading-tight text-muted-foreground group-hover/tile:text-foreground">
-        {entry.title}
-      </span>
-    </button>
+        <span className="line-clamp-2-safe w-full text-center text-2xs leading-tight text-muted-foreground group-hover/tile:text-foreground">
+          {entry.title}
+        </span>
+      </button>
+    </div>
   );
 }
 
@@ -57,11 +91,13 @@ function Row({
   title,
   entries,
   onOpen,
+  onRemove,
 }: {
   icon: React.ReactNode;
   title: string;
   entries: WatchHistoryEntry[];
   onOpen: (entry: WatchHistoryEntry) => void;
+  onRemove?: (entry: WatchHistoryEntry) => void;
 }) {
   if (entries.length === 0) return null;
 
@@ -73,7 +109,7 @@ function Row({
       </h2>
       <div className="flex gap-1 overflow-x-auto overscroll-x-contain pb-1">
         {entries.map((entry) => (
-          <ChannelTile key={entry.id} entry={entry} onOpen={onOpen} />
+          <ChannelTile key={entry.id} entry={entry} onOpen={onOpen} onRemove={onRemove} />
         ))}
       </div>
     </section>
@@ -132,6 +168,21 @@ export function ChannelShortcuts({ profileId }: { profileId: string | null }) {
     [playChannel, router],
   );
 
+  const remove = React.useCallback(
+    async (entry: WatchHistoryEntry) => {
+      if (!profileId) return;
+
+      // Dropped from both rows at once: the same entry feeds them, so leaving
+      // it in one would look like the removal half worked.
+      setFrequent((rows) => rows.filter((row) => row.id !== entry.id));
+      setRecent((rows) => rows.filter((row) => row.id !== entry.id));
+
+      await forgetWatchEntry(profileId, entry.itemId);
+      toast.success(`${entry.title} listeden kaldırıldı`);
+    },
+    [profileId],
+  );
+
   if (loading) {
     return (
       <div className="flex gap-2">
@@ -151,12 +202,14 @@ export function ChannelShortcuts({ profileId }: { profileId: string | null }) {
         title="Sık izlediklerin"
         entries={frequent}
         onOpen={(entry) => void open(entry)}
+        onRemove={(entry) => void remove(entry)}
       />
       <Row
         icon={<Clock />}
         title="Son izlenenler"
         entries={recent}
         onOpen={(entry) => void open(entry)}
+        onRemove={(entry) => void remove(entry)}
       />
     </div>
   );
