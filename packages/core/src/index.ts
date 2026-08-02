@@ -5,6 +5,7 @@ export * from "./epg-match.js";
 export * from "./http.js";
 export * from "./ids.js";
 export * from "./m3u.js";
+export * from "./opensubtitles.js";
 export * from "./stream-url.js";
 export * from "./text.js";
 export * from "./tmdb.js";

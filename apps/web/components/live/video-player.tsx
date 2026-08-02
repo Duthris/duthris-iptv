@@ -11,6 +11,8 @@ import { PlayerControls } from "@/components/live/player-controls";
 import { PlayerMenu, type TrackOption } from "@/components/live/player-menu";
 import { VolumeIndicator } from "@/components/live/volume-indicator";
 import { SubtitleOverlay } from "@/components/live/subtitle-overlay";
+import { SubtitleSearch } from "@/components/live/subtitle-search";
+import type { SubtitleQuery } from "@/lib/opensubtitles";
 import { languageName } from "@/lib/languages";
 import { findCueAt, parseSubtitles, type SubtitleCue } from "@/lib/subtitles";
 import { useMediaSession, useMediaSessionState } from "@/lib/use-media-session";
@@ -52,6 +54,8 @@ export interface VideoPlayerProps {
   mediaSubtitle?: string | null;
   /** Fires whenever playback starts or stops, for watch tracking. */
   onPlayingChange?: (playing: boolean) => void;
+  /** Enables online subtitle search for this title. */
+  subtitleSearch?: SubtitleQuery | null;
   className?: string;
 }
 
@@ -141,6 +145,7 @@ export function VideoPlayer({
   nextLabel,
   mediaSubtitle,
   onPlayingChange,
+  subtitleSearch,
   className,
 }: VideoPlayerProps) {
   const videoRef = React.useRef<HTMLVideoElement>(null);
@@ -178,6 +183,7 @@ export function VideoPlayer({
   const [activeCueText, setActiveCueText] = React.useState<string | null>(null);
   /** Manual subtitle sync correction, in milliseconds. */
   const [subtitleDelayMs, setSubtitleDelayMs] = React.useState(0);
+  const [searchOpen, setSearchOpen] = React.useState(false);
   const [videoSize, setVideoSize] = React.useState<{ width: number; height: number } | null>(null);
   /** Holds the pre-seek picture while the decoder restarts. */
   const freezeRef = React.useRef<HTMLCanvasElement>(null);
@@ -1379,6 +1385,12 @@ export function VideoPlayer({
           activeQualityId={String(manualLevel)}
           onSelectQuality={(id) => setManualLevel(Number(id))}
           subtitleDelayMs={subtitleDelayMs}
+          onSearchSubtitle={
+            subtitleSearch ? () => {
+              setMenuOpen(false);
+              setSearchOpen(true);
+            } : undefined
+          }
           onSubtitleDelayChange={(delta) =>
             setSubtitleDelayMs((current) => (delta === 0 ? 0 : current + delta))
           }

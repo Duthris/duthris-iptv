@@ -1,7 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { AudioLines, Captions, FileUp, Gauge, Info, Moon, Ratio, RotateCcw } from "lucide-react";
+import {
+  AudioLines,
+  Captions,
+  FileUp,
+  Gauge,
+  Info,
+  Moon,
+  Ratio,
+  RotateCcw,
+  Search,
+} from "lucide-react";
 import { Spinner, cn } from "@iptv/ui";
 
 import { useSettingsStore, type AspectRatioMode } from "@/stores/settings-store";
@@ -38,6 +48,7 @@ export interface PlayerMenuProps {
 
   subtitleDelayMs?: number;
   onSubtitleDelayChange?: (deltaMs: number) => void;
+  onSearchSubtitle?: () => void;
 }
 
 const ASPECT_OPTIONS: Array<{ value: AspectRatioMode; label: string }> = [
@@ -160,6 +171,7 @@ export function PlayerMenu({
   onSelectQuality,
   subtitleDelayMs = 0,
   onSubtitleDelayChange,
+  onSearchSubtitle,
 }: PlayerMenuProps) {
   const aspectRatio = useSettingsStore((state) => state.aspectRatio);
   const setAspectRatio = useSettingsStore((state) => state.setAspectRatio);
@@ -309,6 +321,22 @@ export function PlayerMenu({
               />
             ))}
           </div>
+
+          {onSearchSubtitle ? (
+            <button
+              type="button"
+              onClick={onSearchSubtitle}
+              className={cn(
+                "mt-1.5 flex w-full items-center gap-2 rounded-md px-2 py-1.5",
+                "text-2xs text-white/70 transition-colors duration-fast",
+                "hover:bg-white/10 hover:text-white",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60",
+              )}
+            >
+              <Search className="size-3.5" />
+              İnternetten altyazı ara
+            </button>
+          ) : null}
 
           {onLoadSubtitleFile ? (
             <button

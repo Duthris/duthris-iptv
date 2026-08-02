@@ -288,6 +288,13 @@ export function SeriesDetail({ seriesId, onClose }: SeriesDetailProps) {
             onProgress={handleProgress}
             onEnded={(duration) => void handleEnded(duration)}
             mediaSubtitle={series.name}
+            subtitleSearch={{
+              title: series.name,
+              year: series.year,
+              tmdbId: seriesTmdb?.tmdbId ?? null,
+              season: playing.season,
+              episode: playing.episode,
+            }}
             onPrevious={
               previousEpisode
                 ? () => {
