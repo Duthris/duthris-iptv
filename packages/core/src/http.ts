@@ -1,6 +1,9 @@
 export interface FetchOptions {
   signal?: AbortSignal;
   headers?: Record<string, string>;
+  /** Defaults to GET. Only needed by APIs that take a request body. */
+  method?: string;
+  body?: string;
 
   onProgress?: (loadedBytes: number, totalBytes: number | null) => void;
 }
@@ -148,6 +151,8 @@ export function createHttpClient(options: CreateHttpClientOptions = {}): HttpCli
       signal: opts?.signal,
       headers: opts?.headers,
       redirect: "follow",
+      ...(opts?.method ? { method: opts.method } : {}),
+      ...(opts?.body !== undefined ? { body: opts.body } : {}),
 
       credentials: "omit",
     });

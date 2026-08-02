@@ -149,6 +149,11 @@ export function MovieDetail({ movieId, onClose }: MovieDetailProps) {
             logo={item.logo}
             live={false}
             mediaSubtitle={item.year ? String(item.year) : null}
+            subtitleSearch={{
+              title: item.name,
+              year: item.year,
+              tmdbId: vodInfo?.tmdbId ?? tmdb?.tmdbId ?? null,
+            }}
             startPositionSecs={resumeAt}
             onProgress={handleProgress}
             onEnded={(duration) => {

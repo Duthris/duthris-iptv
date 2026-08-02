@@ -36,6 +36,7 @@ jobs:
         run: pnpm -w run build:renderer
         env:
           NEXT_PUBLIC_TMDB_TOKEN: ${{ secrets.TMDB_TOKEN }}
+          NEXT_PUBLIC_OPENSUBTITLES_KEY: ${{ secrets.OPENSUBTITLES_KEY }}
 
       - name: Build main process
         run: pnpm --filter @iptv/desktop run build:main

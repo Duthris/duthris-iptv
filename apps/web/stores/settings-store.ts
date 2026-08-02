@@ -44,6 +44,8 @@ export interface SettingsState {
 
   tmdbEnabled: boolean;
 
+  openSubtitlesKey: string;
+
   guideTimeZone: string | null;
 
   guideShiftMinutes: number;
@@ -70,6 +72,7 @@ export interface SettingsState {
   setKeepScreenAwake: (value: boolean) => void;
   setTmdbToken: (value: string) => void;
   setTmdbEnabled: (value: boolean) => void;
+  setOpenSubtitlesKey: (value: string) => void;
   setGuideTimeZone: (value: string | null) => void;
   setGuideShiftMinutes: (value: number) => void;
   setFontScale: (value: number) => void;
@@ -98,6 +101,7 @@ export const useSettingsStore = create<SettingsState>()(
       keepScreenAwake: true,
       tmdbToken: "",
       tmdbEnabled: true,
+      openSubtitlesKey: "",
       guideTimeZone: null,
       guideShiftMinutes: 0,
       fontScale: 1,
@@ -122,6 +126,7 @@ export const useSettingsStore = create<SettingsState>()(
       setKeepScreenAwake: (keepScreenAwake) => set({ keepScreenAwake }),
       setTmdbToken: (tmdbToken) => set({ tmdbToken: tmdbToken.trim() }),
       setTmdbEnabled: (tmdbEnabled) => set({ tmdbEnabled }),
+      setOpenSubtitlesKey: (openSubtitlesKey) => set({ openSubtitlesKey: openSubtitlesKey.trim() }),
       setGuideTimeZone: (guideTimeZone) => set({ guideTimeZone }),
 
       setGuideShiftMinutes: (value) =>

@@ -12,6 +12,7 @@ import {
   MonitorPlay,
   RefreshCw,
   Sparkles,
+  Captions,
   ShieldCheck,
   Trash2,
   Type,
@@ -45,6 +46,7 @@ import {
 
 import { AppShell } from "@/components/app-shell";
 import { GUIDE_TIME_ZONES } from "@/lib/use-guide-time";
+import { hasBuildTimeOpenSubtitlesKey } from "@/lib/opensubtitles";
 import { hasBuildTimeTmdbToken } from "@/lib/tmdb";
 import { usePlaylistStore } from "@/stores/playlist-store";
 import { useProfileStore } from "@/stores/profile-store";
@@ -151,6 +153,9 @@ export default function SettingsPage() {
   }, []);
 
   const hasBuildTimeToken = hasBuildTimeTmdbToken();
+  const openSubtitlesKey = useSettingsStore((state) => state.openSubtitlesKey);
+  const setOpenSubtitlesKey = useSettingsStore((state) => state.setOpenSubtitlesKey);
+  const hasBuildTimeSubKey = hasBuildTimeOpenSubtitlesKey();
 
   const [passphrase, setPassphrase] = React.useState("");
   const [busy, setBusy] = React.useState(false);
@@ -461,6 +466,31 @@ export default function SettingsPage() {
               </span>
             </span>
           </label>
+        </SectionCard>
+
+        <SectionCard
+          icon={Captions}
+          title="Altyazı arama"
+          description="Film ve dizilerde eksik altyazıları OpenSubtitles üzerinden arayıp indirir."
+        >
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="os-key">API anahtarı</Label>
+            <Input
+              id="os-key"
+              type="password"
+              value={openSubtitlesKey}
+              onChange={(event) => setOpenSubtitlesKey(event.target.value)}
+              placeholder={
+                hasBuildTimeSubKey ? "Uygulamayla gelen anahtar kullanılıyor" : "OpenSubtitles API anahtarı"
+              }
+              autoComplete="off"
+              className="max-w-lg"
+            />
+            <FieldHint>
+              Günlük indirme hakkı anahtar başınadır, kullanıcı başına değil. Kendi anahtarını
+              girmek istersen opensubtitles.com üzerinden ücretsiz alabilirsin.
+            </FieldHint>
+          </div>
         </SectionCard>
 
         <SectionCard
