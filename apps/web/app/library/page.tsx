@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BarChart3, Clock, Download, Heart, History, Library, Trash2 } from "lucide-react";
+import { BarChart3, Bell, Clock, Download, Heart, History, Library, Trash2 } from "lucide-react";
 import { clearHistory, getEpisode, getLiveChannel } from "@iptv/db";
 import { Badge, Button, EmptyState, Skeleton, cn } from "@iptv/ui";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { MovieDetail } from "@/components/library/movie-detail";
 import { SeriesDetail } from "@/components/library/series-detail";
 import { WatchStatsPanel } from "@/components/library/watch-stats";
 import { DownloadsPanel } from "@/components/library/downloads-panel";
+import { RemindersPanel } from "@/components/library/reminders-panel";
 import { SegmentedControl } from "@/components/playlist/segmented-control";
 import { loadContinueWatching, loadFavorites, loadHistory, type LibraryEntry } from "@/lib/library";
 import { useActiveProfile } from "@/stores/profile-store";
@@ -20,12 +21,13 @@ import { usePlayerStore } from "@/stores/player-store";
 import { useNavigationStore } from "@/stores/navigation-store";
 import { formatCount, formatDuration, initialsOf } from "@/lib/format";
 
-type Tab = "continue" | "favorites" | "history" | "stats" | "downloads";
+type Tab = "continue" | "favorites" | "history" | "reminders" | "stats" | "downloads";
 
 const TABS = [
   { value: "continue" as const, label: "İzlemeye devam et", icon: Clock },
   { value: "favorites" as const, label: "Favoriler", icon: Heart },
   { value: "history" as const, label: "Geçmiş", icon: History },
+  { value: "reminders" as const, label: "Hatırlatmalar", icon: Bell },
   { value: "stats" as const, label: "İstatistikler", icon: BarChart3 },
   { value: "downloads" as const, label: "İndirilenler", icon: Download },
 ];
@@ -178,8 +180,9 @@ export default function LibraryPage() {
     router.push("/live");
   }
 
+  // Reminders brings its own empty state, as the panels below do.
   const emptyCopy: Record<
-    Exclude<Tab, "stats" | "downloads">,
+    Exclude<Tab, "stats" | "downloads" | "reminders">,
     { title: string; description: string; links: Array<{ href: string; label: string }> }
   > = {
     continue: {
@@ -259,6 +262,8 @@ export default function LibraryPage() {
               });
             }}
           />
+        ) : tab === "reminders" ? (
+          <RemindersPanel />
         ) : tab === "stats" ? (
           <WatchStatsPanel profileId={profile?.id ?? null} />
         ) : loading ? (
