@@ -13,12 +13,12 @@ import {
 } from "./downloads.js";
 import { setLocalFileResolver } from "./transcode.js";
 import {
-  createTray,
   destroyTray,
-  isQuitting,
   markQuitting,
+  registerTray,
   shouldHideOnClose,
   startedHidden,
+  syncTray,
 } from "./tray.js";
 import {
   RENDERER_ORIGIN,
@@ -40,8 +40,15 @@ if (!app.requestSingleInstanceLock()) {
 if (!isDev) registerRendererScheme();
 
 app.on("second-instance", () => {
-  if (!mainWindow) return;
+  // The lock stops a second copy starting, so this is the only path back when
+  // the first one is running without a window.
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createWindow();
+    return;
+  }
+
   if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
   mainWindow.focus();
 });
 
@@ -69,6 +76,9 @@ function createWindow(): void {
 
   mainWindow.once("ready-to-show", () => {
     if (!startedHidden()) mainWindow?.show();
+    // Started at login with no window on screen: without an icon there would
+    // be no way to reach the app at all.
+    syncTray();
   });
 
   mainWindow.on("close", (event) => {
@@ -77,8 +87,14 @@ function createWindow(): void {
     mainWindow?.hide();
   });
 
+  // The icon follows the window rather than the setting, so turning the setting
+  // off while hidden still leaves a way back.
+  mainWindow.on("show", syncTray);
+  mainWindow.on("hide", syncTray);
+
   mainWindow.on("closed", () => {
     mainWindow = null;
+    syncTray();
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -112,7 +128,8 @@ app.whenReady().then(() => {
   registerUpdater(() => mainWindow);
   registerDownloadWindow(() => mainWindow);
   setLocalFileResolver(downloadMediaPath);
-  createTray(() => mainWindow);
+  // Only registers the accessor; the icon itself appears when a window hides.
+  registerTray(() => mainWindow);
 
   void configureSecureDns();
 
@@ -126,7 +143,10 @@ app.whenReady().then(() => {
 app.on("before-quit", markQuitting);
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin" && isQuitting()) app.quit();
+  // Reaching here means the window really closed: hiding to the tray prevents
+  // the close, so this never fires in that case. Staying alive without a
+  // window left a process only the tray menu could end.
+  if (process.platform !== "darwin") app.quit();
 });
 
 app.on("before-quit", shutdownTranscodeServer);
