@@ -96,9 +96,12 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.xtreamClearCache, () => clearXtreamCache());
 
-  ipcMain.handle(IPC.trailerEmbedUrl, (_event, videoId: string): string =>
-    trailerEmbedUrl(videoId),
-  );
+  ipcMain.handle(IPC.trailerEmbedUrl, async (_event, videoId: string): Promise<string> => {
+    // The server is started lazily, and a trailer can be the first thing that
+    // needs it — without this the URL carries port 0 and an empty token.
+    await startTranscodeServer();
+    return trailerEmbedUrl(videoId);
+  });
 
   ipcMain.handle(IPC.listExternalPlayers, (): ExternalPlayer[] => listExternalPlayers());
 
