@@ -8,9 +8,11 @@ import {
   type AppInfo,
   type PickedPlaylistFile,
   type ResolveStreamRequest,
+  type SubtitleSearchRequest,
 } from "../shared/ipc.js";
 import { deleteCredential, readCredential, saveCredential } from "./credentials.js";
 import { createTranscodeSession, stopTranscodeSession } from "./transcode.js";
+import { downloadSubtitle, searchSubtitles } from "./subtitles.js";
 
 const MAX_PLAYLIST_BYTES = 200 * 1024 * 1024;
 
@@ -81,6 +83,14 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.handle(IPC.openExternal, async (_event, url: string) => {
     if (!/^https?:\/\//i.test(url)) return;
     await shell.openExternal(url);
+  });
+
+  ipcMain.handle(IPC.searchSubtitles, async (_event, request: SubtitleSearchRequest) => {
+    return searchSubtitles(request);
+  });
+
+  ipcMain.handle(IPC.downloadSubtitle, async (_event, apiKey: string, fileId: number) => {
+    return downloadSubtitle(apiKey, fileId);
   });
 
   ipcMain.handle(IPC.getAppInfo, (): AppInfo => {
