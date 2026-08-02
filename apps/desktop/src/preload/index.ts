@@ -9,6 +9,8 @@ import {
   type SubtitleSearchRequest,
   type SubtitleSearchResult,
   type TranscodeSession,
+  type ShellSettings,
+  type UpdateState,
 } from "../shared/ipc.js";
 
 const bridge = {
@@ -44,6 +46,22 @@ const bridge = {
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.openExternal, url),
 
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke(IPC.getAppInfo),
+
+  getShellSettings: (): Promise<ShellSettings> => ipcRenderer.invoke(IPC.getShellSettings),
+  setShellSettings: (next: ShellSettings): Promise<void> =>
+    ipcRenderer.invoke(IPC.setShellSettings, next),
+  exportLogs: (): Promise<string | null> => ipcRenderer.invoke(IPC.exportLogs),
+
+  getUpdateState: (): Promise<UpdateState> => ipcRenderer.invoke(IPC.updateStatus),
+  checkForUpdate: (): Promise<UpdateState> => ipcRenderer.invoke(IPC.updateCheck),
+  downloadUpdate: (): Promise<void> => ipcRenderer.invoke(IPC.updateDownload),
+  installUpdate: (): Promise<void> => ipcRenderer.invoke(IPC.updateInstall),
+
+  onUpdateState: (listener: (state: UpdateState) => void): (() => void) => {
+    const handler = (_event: unknown, state: UpdateState) => listener(state);
+    ipcRenderer.on(IPC.updateEvent, handler);
+    return () => ipcRenderer.removeListener(IPC.updateEvent, handler);
+  },
 
   searchSubtitles: (request: SubtitleSearchRequest): Promise<SubtitleSearchResult[]> =>
     ipcRenderer.invoke(IPC.searchSubtitles, request),

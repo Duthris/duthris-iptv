@@ -14,6 +14,14 @@ export const IPC = {
   getAppInfo: "app:info",
   searchSubtitles: "subtitles:search",
   downloadSubtitle: "subtitles:download",
+  updateStatus: "update:status",
+  updateCheck: "update:check",
+  updateDownload: "update:download",
+  updateInstall: "update:install",
+  updateEvent: "update:event",
+  getShellSettings: "shell:get",
+  setShellSettings: "shell:set",
+  exportLogs: "shell:export-logs",
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];
@@ -88,4 +96,20 @@ export interface SubtitleDownloadResult {
   text: string;
   fileName: string | null;
   remaining: number | null;
+}
+
+export type UpdateState =
+  | { status: "idle" }
+  | { status: "checking" }
+  | { status: "current" }
+  | { status: "available"; version: string; notes: string | null }
+  | { status: "downloading"; percent: number }
+  | { status: "ready"; version: string }
+  | { status: "error"; message: string }
+  | { status: "unsupported"; reason: "portable" | "development" };
+
+export interface ShellSettings {
+  minimiseToTray: boolean;
+  launchAtStartup: boolean;
+  alwaysOnTop: boolean;
 }

@@ -185,6 +185,7 @@ export function VideoPlayer({
   const [subtitleDelayMs, setSubtitleDelayMs] = React.useState(0);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [videoSize, setVideoSize] = React.useState<{ width: number; height: number } | null>(null);
+  const [bitrateKbps, setBitrateKbps] = React.useState<number | null>(null);
   /** Holds the pre-seek picture while the decoder restarts. */
   const freezeRef = React.useRef<HTMLCanvasElement>(null);
   const [frozen, setFrozen] = React.useState(false);
@@ -421,7 +422,10 @@ export function VideoPlayer({
        * which rendition "Otomatik" has settled on rather than just the word.
        */
       hls.on(HlsCtor.Events.LEVEL_SWITCHED, (_event, data) => {
-        if (!cancelled) setActiveLevel(data.level);
+        if (cancelled) return;
+        setActiveLevel(data.level);
+        const bitrate = hls.levels[data.level]?.bitrate;
+        setBitrateKbps(bitrate ? Math.round(bitrate / 1000) : null);
       });
 
       hls.on(HlsCtor.Events.ERROR, (_event, data) => {
@@ -1091,6 +1095,10 @@ export function VideoPlayer({
     if (videoSize)
       rows.push({ label: "Çözünürlük", value: `${videoSize.width}×${videoSize.height}` });
 
+    if (bitrateKbps !== null) {
+      rows.push({ label: "Bit hızı", value: `${bitrateKbps.toLocaleString("tr-TR")} kbps` });
+    }
+
     if (transcode) {
       rows.push({
         label: "Video",
@@ -1114,12 +1122,13 @@ export function VideoPlayer({
     }
 
     return rows;
-  }, [videoSize, transcode, url]);
+  }, [videoSize, transcode, url, bitrateKbps]);
 
   React.useEffect(() => {
     setQualityLevels([]);
     setActiveLevel(-1);
     setManualLevel(-1);
+    setBitrateKbps(null);
     setFrozen(false);
   }, [url]);
 

@@ -8,15 +8,25 @@ import {
   type AppInfo,
   type PickedPlaylistFile,
   type ResolveStreamRequest,
+  type ShellSettings,
   type SubtitleSearchRequest,
 } from "../shared/ipc.js";
 import { deleteCredential, readCredential, saveCredential } from "./credentials.js";
 import { createTranscodeSession, stopTranscodeSession } from "./transcode.js";
 import { downloadSubtitle, searchSubtitles } from "./subtitles.js";
+import { exportLogs, record } from "./logs.js";
+import { launchAtStartupEnabled, setLaunchAtStartup, setTrayOptions } from "./tray.js";
 
 const MAX_PLAYLIST_BYTES = 200 * 1024 * 1024;
 
+let shellSettings: ShellSettings = {
+  minimiseToTray: false,
+  launchAtStartup: false,
+  alwaysOnTop: false,
+};
+
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
+  shellSettings = { ...shellSettings, launchAtStartup: launchAtStartupEnabled() };
   ipcMain.handle(IPC.pickPlaylistFile, async (): Promise<PickedPlaylistFile | null> => {
     const window = getWindow();
     if (!window) return null;
@@ -92,6 +102,18 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.handle(IPC.downloadSubtitle, async (_event, apiKey: string, fileId: number) => {
     return downloadSubtitle(apiKey, fileId);
   });
+
+  ipcMain.handle(IPC.getShellSettings, (): ShellSettings => shellSettings);
+
+  ipcMain.handle(IPC.setShellSettings, (_event, next: ShellSettings): void => {
+    shellSettings = next;
+    setTrayOptions({ minimiseToTray: next.minimiseToTray });
+    setLaunchAtStartup(next.launchAtStartup);
+    getWindow()?.setAlwaysOnTop(next.alwaysOnTop);
+    record(`shell settings: ${JSON.stringify(next)}`);
+  });
+
+  ipcMain.handle(IPC.exportLogs, async (): Promise<string | null> => exportLogs());
 
   ipcMain.handle(IPC.getAppInfo, (): AppInfo => {
     return {
