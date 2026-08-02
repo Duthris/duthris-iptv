@@ -419,7 +419,7 @@ export function SeriesDetail({ seriesId, onClose }: SeriesDetailProps) {
 
               <div className="flex flex-wrap items-center gap-2">
                 <FavoriteButton itemId={series.id} kind="series" />
-                <TrailerButton trailerKey={seriesTmdb?.trailerKey ?? null} />
+                <TrailerButton trailerKey={seriesTmdb?.trailerKey ?? null} title={series.name} />
               </div>
 
               {seriesView?.plot ? (

@@ -293,7 +293,7 @@ export function MovieDetail({ movieId, onClose }: MovieDetailProps) {
                   </Button>
                 ) : null}
                 <FavoriteButton itemId={item.id} kind="vod" />
-                <TrailerButton trailerKey={tmdb?.trailerKey ?? null} />
+                <TrailerButton trailerKey={tmdb?.trailerKey ?? null} title={item.name} />
                 <DownloadButton
                   itemId={item.id}
                   kind="vod"
