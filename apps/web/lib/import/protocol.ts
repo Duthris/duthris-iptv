@@ -21,7 +21,13 @@ export type ImportRequest =
       sourceId: string;
       baseUrl: string;
       username: string;
+      /**
+       * The real password in the browser. On the desktop this is the bridge
+       * placeholder and `credentialRef` is set, so the secret is substituted in
+       * the main process and never enters this thread.
+       */
       password: string;
+      credentialRef?: string | null;
       preferredFormat: StreamFormat;
     }
   | {
@@ -53,7 +59,17 @@ export type ImportResponse =
       requestId: string;
       result: EpgImportResult;
     }
-  | { type: "error"; requestId: string; message: string };
+  | { type: "error"; requestId: string; message: string }
+  /**
+   * Asks the page to run one panel request through the desktop bridge. The
+   * worker cannot reach the preload API itself, so the page relays it.
+   */
+  | { type: "http-request"; callId: string; credentialRef: string; url: string; maxAgeMs: number };
+
+export type ImportCommand =
+  | ImportRequest
+  | { type: "http-response"; callId: string; ok: true; body: string }
+  | { type: "http-response"; callId: string; ok: false; message: string; status: number };
 
 export interface EpgImportResult {
   programCount: number;
