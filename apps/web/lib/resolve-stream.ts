@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  buildTimeshiftUrl,
   parseXtreamCredentials,
   resolveEpisodeStream,
   resolveLiveStream,
@@ -108,4 +109,25 @@ export async function resolveEpisodeStreamUrl(episodeId: string): Promise<Resolv
 
 export function clearCredentialCache(): void {
   credentialCache.clear();
+}
+
+export async function resolveArchiveStream(
+  channelId: string,
+  startAt: Date,
+  durationMinutes: number,
+): Promise<ResolvedStream | null> {
+  const channel = await getLiveChannel(channelId);
+  if (!channel || channel.streamId === null) return null;
+
+  const source = await getSource(channel.sourceId);
+  if (!source || source.kind !== "xtream") return null;
+
+  return resolveFor(source, ({ credentials }) => {
+    if (!credentials) return null;
+    return {
+      url: buildTimeshiftUrl(credentials, channel.streamId!, startAt, durationMinutes),
+      kind: "mpegts",
+      insecure: credentials.baseUrl.startsWith("http://"),
+    };
+  });
 }

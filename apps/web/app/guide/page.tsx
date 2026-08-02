@@ -14,6 +14,7 @@ import { AppShell } from "@/components/app-shell";
 import { DayPicker } from "@/components/guide/day-picker";
 import { ProgramDetail } from "@/components/guide/program-detail";
 import { useGuideTime } from "@/lib/use-guide-time";
+import { useNavigationStore } from "@/stores/navigation-store";
 import { useActiveSourceIds, usePlaylistStore } from "@/stores/playlist-store";
 import { usePlayerStore } from "@/stores/player-store";
 
@@ -34,6 +35,7 @@ const MAX_DAY_OFFSET = 6;
 
 export default function GuidePage() {
   const router = useRouter();
+  const openArchive = useNavigationStore((state) => state.openArchive);
   const sourcesLoaded = usePlaylistStore((state) => state.loaded);
   const sourceIds = useActiveSourceIds();
   const playChannel = usePlayerStore((state) => state.playChannel);
@@ -338,6 +340,23 @@ export default function GuidePage() {
       <ProgramDetail
         program={selected?.program ?? null}
         channelName={selected?.channel.name ?? ""}
+        onWatchArchive={
+          selected && selected.channel.hasArchive && selected.program.stop + shiftMs < now
+            ? () => {
+                openArchive({
+                  channelId: selected.channel.id,
+                  startAt: selected.program.start + shiftMs,
+                  durationMinutes: Math.max(
+                    1,
+                    Math.round((selected.program.stop - selected.program.start) / 60_000),
+                  ),
+                  title: selected.program.title,
+                });
+                router.push("/live");
+                setSelected(null);
+              }
+            : undefined
+        }
         onClose={() => setSelected(null)}
         onWatch={() => {
           if (!selected) return;

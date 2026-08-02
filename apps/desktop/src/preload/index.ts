@@ -9,7 +9,9 @@ import {
   type SubtitleSearchRequest,
   type SubtitleSearchResult,
   type TranscodeSession,
+  type DownloadEntry,
   type ShellSettings,
+  type StartDownloadRequest,
   type UpdateState,
 } from "../shared/ipc.js";
 
@@ -46,6 +48,19 @@ const bridge = {
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.openExternal, url),
 
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke(IPC.getAppInfo),
+
+  listDownloads: (): Promise<DownloadEntry[]> => ipcRenderer.invoke(IPC.listDownloads),
+  startDownload: (request: StartDownloadRequest): Promise<DownloadEntry> =>
+    ipcRenderer.invoke(IPC.startDownload, request),
+  cancelDownload: (id: string): Promise<void> => ipcRenderer.invoke(IPC.cancelDownload, id),
+  removeDownload: (id: string): Promise<void> => ipcRenderer.invoke(IPC.removeDownload, id),
+  downloadUrl: (id: string): Promise<string> => ipcRenderer.invoke(IPC.downloadUrl, id),
+
+  onDownloadState: (listener: (entry: DownloadEntry) => void): (() => void) => {
+    const handler = (_event: unknown, entry: DownloadEntry) => listener(entry);
+    ipcRenderer.on(IPC.downloadEvent, handler);
+    return () => ipcRenderer.removeListener(IPC.downloadEvent, handler);
+  },
 
   getShellSettings: (): Promise<ShellSettings> => ipcRenderer.invoke(IPC.getShellSettings),
   setShellSettings: (next: ShellSettings): Promise<void> =>

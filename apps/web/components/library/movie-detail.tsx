@@ -8,6 +8,8 @@ import { getVodItem, getWatchProgress, recordWatch } from "@iptv/db";
 import { Badge, Button, Skeleton, cn } from "@iptv/ui";
 
 import { CastStrip } from "@/components/library/cast-strip";
+import { DownloadButton } from "@/components/library/download-button";
+import { localPlaybackUrl, useDownloads } from "@/lib/downloads";
 import { DetailOverlay } from "@/components/library/detail-overlay";
 import { FavoriteButton } from "@/components/library/favorite-button";
 import { loadVodInfo } from "@/lib/vod-info";
@@ -35,6 +37,7 @@ export function MovieDetail({ movieId, onClose }: MovieDetailProps) {
   const [resumeAt, setResumeAt] = React.useState<number | null>(null);
   const [posterFailed, setPosterFailed] = React.useState(false);
   const [vodInfo, setVodInfo] = React.useState<VodInfo | null>(null);
+  const downloads = useDownloads();
 
   React.useEffect(() => {
     if (!movieId) return;
@@ -103,6 +106,20 @@ export function MovieDetail({ movieId, onClose }: MovieDetailProps) {
 
   async function startPlayback(fromStart: boolean) {
     if (!item) return;
+
+    // A finished download plays from disk: no provider connection, no ffmpeg,
+    // and it works with the network off.
+    const offline = downloads.byItem.get(item.id);
+    if (offline?.status === "done") {
+      const local = await localPlaybackUrl(offline);
+      if (local) {
+        if (fromStart) setResumeAt(null);
+        setStreamUrl(local);
+        setPlaying(true);
+        return;
+      }
+    }
+
     const resolved = await resolveMovieStream(item.id);
     if (!resolved) return;
     if (fromStart) setResumeAt(null);
@@ -263,6 +280,13 @@ export function MovieDetail({ movieId, onClose }: MovieDetailProps) {
                   </Button>
                 ) : null}
                 <FavoriteButton itemId={item.id} kind="vod" />
+                <DownloadButton
+                  itemId={item.id}
+                  kind="vod"
+                  title={item.name}
+                  poster={view?.poster ?? item.logo}
+                  resolveUrl={async () => (await resolveMovieStream(item.id))?.url ?? null}
+                />
               </div>
             ) : (
               <div className="flex flex-col gap-4">

@@ -22,6 +22,12 @@ export const IPC = {
   getShellSettings: "shell:get",
   setShellSettings: "shell:set",
   exportLogs: "shell:export-logs",
+  listDownloads: "download:list",
+  startDownload: "download:start",
+  cancelDownload: "download:cancel",
+  removeDownload: "download:remove",
+  downloadUrl: "download:url",
+  downloadEvent: "download:event",
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];
@@ -112,4 +118,29 @@ export interface ShellSettings {
   minimiseToTray: boolean;
   launchAtStartup: boolean;
   alwaysOnTop: boolean;
+}
+
+export type DownloadStatus = "downloading" | "done" | "failed" | "cancelled";
+
+export interface DownloadEntry {
+  id: string;
+  title: string;
+  poster: string | null;
+  kind: "vod" | "episode";
+  itemId: string;
+  status: DownloadStatus;
+  progress: number;
+  durationSecs: number | null;
+  bytes: number;
+  startedAt: number;
+  error: string | null;
+}
+
+export interface StartDownloadRequest {
+  id: string;
+  url: string;
+  title: string;
+  poster?: string | null;
+  kind: "vod" | "episode";
+  itemId: string;
 }

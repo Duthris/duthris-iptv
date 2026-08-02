@@ -9,12 +9,20 @@ import {
   type PickedPlaylistFile,
   type ResolveStreamRequest,
   type ShellSettings,
+  type StartDownloadRequest,
   type SubtitleSearchRequest,
 } from "../shared/ipc.js";
 import { deleteCredential, readCredential, saveCredential } from "./credentials.js";
 import { createTranscodeSession, stopTranscodeSession } from "./transcode.js";
 import { downloadSubtitle, searchSubtitles } from "./subtitles.js";
 import { exportLogs, record } from "./logs.js";
+import {
+  cancelDownload,
+  listDownloads,
+  removeDownload,
+  startDownload,
+} from "./downloads.js";
+import { localFileUrl, startTranscodeServer } from "./transcode.js";
 import { launchAtStartupEnabled, setLaunchAtStartup, setTrayOptions } from "./tray.js";
 
 const MAX_PLAYLIST_BYTES = 200 * 1024 * 1024;
@@ -101,6 +109,22 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.downloadSubtitle, async (_event, apiKey: string, fileId: number) => {
     return downloadSubtitle(apiKey, fileId);
+  });
+
+  ipcMain.handle(IPC.listDownloads, () => listDownloads());
+
+  ipcMain.handle(IPC.startDownload, async (_event, request: StartDownloadRequest) => {
+    record(`download start: ${request.title}`);
+    return startDownload(request);
+  });
+
+  ipcMain.handle(IPC.cancelDownload, (_event, id: string) => cancelDownload(id));
+  ipcMain.handle(IPC.removeDownload, (_event, id: string) => removeDownload(id));
+
+  ipcMain.handle(IPC.downloadUrl, async (_event, id: string) => {
+    // The player needs the server up before it can be handed a URL.
+    await startTranscodeServer();
+    return localFileUrl(id);
   });
 
   ipcMain.handle(IPC.getShellSettings, (): ShellSettings => shellSettings);

@@ -57,6 +57,31 @@ export interface ShellSettings {
   alwaysOnTop: boolean;
 }
 
+export type DownloadStatus = "downloading" | "done" | "failed" | "cancelled";
+
+export interface DownloadEntry {
+  id: string;
+  title: string;
+  poster: string | null;
+  kind: "vod" | "episode";
+  itemId: string;
+  status: DownloadStatus;
+  progress: number;
+  durationSecs: number | null;
+  bytes: number;
+  startedAt: number;
+  error: string | null;
+}
+
+export interface StartDownloadRequest {
+  id: string;
+  url: string;
+  title: string;
+  poster?: string | null;
+  kind: "vod" | "episode";
+  itemId: string;
+}
+
 export interface DesktopBridge {
   isDesktop: true;
 
@@ -88,6 +113,14 @@ export interface DesktopBridge {
     apiKey: string,
     fileId: number,
   ): Promise<{ text: string; fileName: string | null; remaining: number | null }>;
+  listDownloads(): Promise<DownloadEntry[]>;
+  startDownload(request: StartDownloadRequest): Promise<DownloadEntry>;
+  cancelDownload(id: string): Promise<void>;
+  removeDownload(id: string): Promise<void>;
+  /** Local playback URL for a completed download. */
+  downloadUrl(id: string): Promise<string>;
+  /** Returns an unsubscribe function. */
+  onDownloadState(listener: (entry: DownloadEntry) => void): () => void;
   getShellSettings(): Promise<ShellSettings>;
   setShellSettings(next: ShellSettings): Promise<void>;
   /** Returns the saved path, or null when cancelled. */
