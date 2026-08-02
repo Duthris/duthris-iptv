@@ -2,7 +2,9 @@
 
 import * as React from "react";
 import { X, Youtube } from "lucide-react";
-import { Button, cn } from "@iptv/ui";
+import { Button, Spinner, cn } from "@iptv/ui";
+
+import { getDesktopBridge } from "@/lib/platform";
 
 /**
  * Trailer playback, kept inside the app.
@@ -24,6 +26,29 @@ export function TrailerButton({
   className?: string;
 }) {
   const [open, setOpen] = React.useState(false);
+  const [src, setSrc] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!open || !trailerKey) {
+      setSrc(null);
+      return;
+    }
+
+    const bridge = getDesktopBridge();
+    if (!bridge) {
+      // A browser page already has a real origin of its own.
+      setSrc(`https://www.youtube-nocookie.com/embed/${trailerKey}?autoplay=1&rel=0`);
+      return;
+    }
+
+    let cancelled = false;
+    void bridge.trailerEmbedUrl(trailerKey).then((url) => {
+      if (!cancelled) setSrc(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, trailerKey]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -63,14 +88,18 @@ export function TrailerButton({
             onClick={(event) => event.stopPropagation()}
             className="relative w-full max-w-4xl overflow-hidden rounded-xl bg-black shadow-lg"
           >
-            <div className="aspect-video w-full">
-              <iframe
-                src={`https://www.youtube-nocookie.com/embed/${trailerKey}?autoplay=1&rel=0`}
-                title={title ? `${title} fragmanı` : "Fragman"}
-                allow="accelerometer; autoplay; encrypted-media; picture-in-picture; fullscreen"
-                allowFullScreen
-                className="size-full border-0"
-              />
+            <div className="grid aspect-video w-full place-items-center">
+              {src ? (
+                <iframe
+                  src={src}
+                  title={title ? `${title} fragmanı` : "Fragman"}
+                  allow="accelerometer; autoplay; encrypted-media; picture-in-picture; fullscreen"
+                  allowFullScreen
+                  className="size-full border-0"
+                />
+              ) : (
+                <Spinner />
+              )}
             </div>
 
             <Button

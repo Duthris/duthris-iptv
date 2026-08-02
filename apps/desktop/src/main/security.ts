@@ -75,7 +75,15 @@ function wantsBrowserIdentity(url: string): boolean {
 
 export function installHeaderBypass(targetSession: Session, devServer: string | null): void {
   targetSession.webRequest.onBeforeSendHeaders((details, callback) => {
-    if (isAppOrigin(details.url, devServer) || wantsBrowserIdentity(details.url)) {
+    if (isAppOrigin(details.url, devServer)) {
+      callback({ requestHeaders: details.requestHeaders });
+      return;
+    }
+
+    if (wantsBrowserIdentity(details.url)) {
+      // Left exactly as Chromium built it. The embed sits on a loopback page,
+      // so its Referer and Origin are already a real http origin YouTube
+      // accepts; substituting anything here would only make them disagree.
       callback({ requestHeaders: details.requestHeaders });
       return;
     }

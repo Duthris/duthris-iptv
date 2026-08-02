@@ -45,6 +45,9 @@ const bridge = {
 
   xtreamClearCache: (): Promise<void> => ipcRenderer.invoke(IPC.xtreamClearCache),
 
+  trailerEmbedUrl: (videoId: string): Promise<string> =>
+    ipcRenderer.invoke(IPC.trailerEmbedUrl, videoId),
+
   listExternalPlayers: (): Promise<ExternalPlayer[]> =>
     ipcRenderer.invoke(IPC.listExternalPlayers),
 

@@ -113,6 +113,8 @@ export interface DesktopBridge {
   >;
   xtreamClearCache(): Promise<void>;
 
+  /** Loopback page that hosts the embed, so it has a real http origin. */
+  trailerEmbedUrl(videoId: string): Promise<string>;
   listExternalPlayers(): Promise<ExternalPlayerInfo[]>;
   pickExternalPlayer(): Promise<ExternalPlayerInfo | null>;
   openExternalPlayer(request: {

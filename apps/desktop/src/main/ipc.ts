@@ -30,7 +30,7 @@ import {
   removeDownload,
   startDownload,
 } from "./downloads.js";
-import { localFileUrl, startTranscodeServer } from "./transcode.js";
+import { localFileUrl, startTranscodeServer, trailerEmbedUrl } from "./transcode.js";
 import { launchAtStartupEnabled, setLaunchAtStartup, setTrayOptions } from "./tray.js";
 
 const MAX_PLAYLIST_BYTES = 200 * 1024 * 1024;
@@ -95,6 +95,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   });
 
   ipcMain.handle(IPC.xtreamClearCache, () => clearXtreamCache());
+
+  ipcMain.handle(IPC.trailerEmbedUrl, (_event, videoId: string): string =>
+    trailerEmbedUrl(videoId),
+  );
 
   ipcMain.handle(IPC.listExternalPlayers, (): ExternalPlayer[] => listExternalPlayers());
 

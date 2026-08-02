@@ -30,6 +30,7 @@ export const IPC = {
   downloadEvent: "download:event",
   xtreamFetch: "xtream:fetch",
   xtreamClearCache: "xtream:clear-cache",
+  trailerEmbedUrl: "trailer:embed-url",
   listExternalPlayers: "external:list",
   pickExternalPlayer: "external:pick",
   openExternalPlayer: "external:open",
