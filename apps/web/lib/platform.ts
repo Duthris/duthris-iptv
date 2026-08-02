@@ -107,6 +107,7 @@ export interface DesktopBridge {
     credentialRef: string;
     urlTemplate: string;
     maxAgeMs?: number;
+    userAgent?: string | null;
   }): Promise<
     { ok: true; body: string; fromCache: boolean } | { ok: false; message: string; status: number }
   >;
@@ -120,6 +121,7 @@ export interface DesktopBridge {
     credentialRef?: string | null;
     startSecs?: number;
     title: string;
+    userAgent?: string | null;
   }): Promise<{ ok: boolean; message?: string }>;
 
   startTranscode(sourceUrl: string): Promise<TranscodeSession>;

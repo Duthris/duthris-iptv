@@ -59,7 +59,11 @@ export interface OpenExternalRequest {
   credentialRef?: string | null;
   startSecs?: number;
   title: string;
+  userAgent?: string | null;
 }
+
+/** What every outbound request identifies as unless a source overrides it. */
+export const DEFAULT_USER_AGENT = "VLC/3.0.20 LibVLC/3.0.20";
 
 export interface XtreamFetchRequest {
   credentialRef: string;
@@ -67,6 +71,8 @@ export interface XtreamFetchRequest {
   urlTemplate: string;
   /** Omitted or zero bypasses the disk cache in both directions. */
   maxAgeMs?: number;
+  /** Per-source override; empty falls back to the built-in default. */
+  userAgent?: string | null;
 }
 
 export type XtreamFetchResult =

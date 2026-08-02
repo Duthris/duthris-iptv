@@ -115,6 +115,7 @@ export interface StreamTemplate {
   /** Holds the bridge placeholder where the password belongs. */
   urlTemplate: string;
   credentialRef: string | null;
+  userAgent: string | null;
 }
 
 /**
@@ -133,9 +134,11 @@ async function templateFor(
   const bridge = getDesktopBridge();
   if (!bridge) return null;
 
+  const userAgent = source.userAgent ?? null;
+
   if (source.kind !== "xtream") {
     const plain = build({ source, credentials: null, context });
-    return plain ? { urlTemplate: plain.url, credentialRef: null } : null;
+    return plain ? { urlTemplate: plain.url, credentialRef: null, userAgent } : null;
   }
 
   if (!source.username || !source.credentialRef) return null;
@@ -149,7 +152,9 @@ async function templateFor(
       }),
       context,
     });
-    return built ? { urlTemplate: built.url, credentialRef: source.credentialRef } : null;
+    return built
+      ? { urlTemplate: built.url, credentialRef: source.credentialRef, userAgent }
+      : null;
   } catch {
     return null;
   }

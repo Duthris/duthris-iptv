@@ -21,6 +21,7 @@ import {
 } from "@/components/library/container-notice";
 import { movieStreamTemplate, resolveMovieStream } from "@/lib/resolve-stream";
 import { handOff } from "@/lib/external-player";
+import { TrailerButton } from "@/components/library/trailer-button";
 import { useActiveProfile } from "@/stores/profile-store";
 import { formatDuration } from "@/lib/format";
 
@@ -292,6 +293,7 @@ export function MovieDetail({ movieId, onClose }: MovieDetailProps) {
                   </Button>
                 ) : null}
                 <FavoriteButton itemId={item.id} kind="vod" />
+                <TrailerButton trailerKey={tmdb?.trailerKey ?? null} />
                 <DownloadButton
                   itemId={item.id}
                   kind="vod"

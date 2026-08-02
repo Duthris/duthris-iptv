@@ -29,6 +29,7 @@ import { NextEpisodePrompt } from "@/components/library/next-episode-prompt";
 import { ensureEpisodes, groupBySeason, type SeasonGroup } from "@/lib/series-episodes";
 import { episodeStreamTemplate, resolveEpisodeStreamUrl } from "@/lib/resolve-stream";
 import { handOff } from "@/lib/external-player";
+import { TrailerButton } from "@/components/library/trailer-button";
 import { useActiveProfile } from "@/stores/profile-store";
 import { useTmdbDetails } from "@/lib/use-tmdb";
 import { formatDuration } from "@/lib/format";
@@ -416,7 +417,10 @@ export function SeriesDetail({ seriesId, onClose }: SeriesDetailProps) {
                 ) : null}
               </div>
 
-              <FavoriteButton itemId={series.id} kind="series" className="self-start" />
+              <div className="flex flex-wrap items-center gap-2">
+                <FavoriteButton itemId={series.id} kind="series" />
+                <TrailerButton trailerKey={seriesTmdb?.trailerKey ?? null} />
+              </div>
 
               {seriesView?.plot ? (
                 <p className="text-muted-foreground text-sm leading-relaxed">{seriesView.plot}</p>

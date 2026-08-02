@@ -38,6 +38,12 @@ export interface PlaylistSource {
 
   streamProtocol: StreamProtocolPreference;
 
+  /**
+   * Sent when talking to this provider. Some panels answer differently, or
+   * refuse outright, depending on what asks. Empty means the built-in default.
+   */
+  userAgent?: string | null;
+
   streamEndpoints: StreamEndpoints | null;
 
   epgUrl: string | null;

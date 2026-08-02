@@ -20,7 +20,7 @@ import type {
   StreamProtocolPreference,
 } from "@iptv/core";
 import { deleteSource, updateSource } from "@iptv/db";
-import { Badge, Button, Card, EmptyState, Progress, cn } from "@iptv/ui";
+import { Badge, Button, Card, EmptyState, Input, Label, Progress, cn } from "@iptv/ui";
 
 import { AppShell } from "@/components/app-shell";
 import { AddPlaylistForm } from "@/components/playlist/add-playlist-form";
@@ -56,6 +56,7 @@ function SourceCard({
   const [busy, setBusy] = React.useState(false);
   const [progress, setProgress] = React.useState<ParseProgress | null>(null);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [userAgent, setUserAgent] = React.useState(source.userAgent ?? "");
 
   const meta = KIND_META[source.kind];
   const Icon = meta.icon;
@@ -104,6 +105,15 @@ function SourceCard({
       setBusy(false);
       setProgress(null);
     }
+  }
+
+  async function handleUserAgentSave() {
+    const next = userAgent.trim();
+    if (next === (source.userAgent ?? "")) return;
+
+    await updateSource(source.id, { userAgent: next || null });
+    await onChanged();
+    toast.success(next ? "Kimlik kaydedildi" : "Varsayılan kimliğe dönüldü");
   }
 
   async function handleProtocolChange(value: StreamProtocolPreference) {
@@ -203,6 +213,21 @@ function SourceCard({
           Sağlayıcılar aynı yayını hem HTTP hem HTTPS üzerinden verir ve bunlar farklı sunuculara
           gider. HTTPS ucu geçersiz sertifika kullanıyorsa tarayıcı yayını açmaz; böyle bir durumda
           HTTP&apos;yi seçin.
+        </p>
+      </div>
+
+      <div className="border-border/70 bg-surface-2/50 flex flex-col gap-2 rounded-md border p-3.5">
+        <Label htmlFor={`ua-${source.id}`}>Kimlik (User-Agent)</Label>
+        <Input
+          id={`ua-${source.id}`}
+          value={userAgent}
+          placeholder="VLC/3.0.20 LibVLC/3.0.20"
+          onChange={(event) => setUserAgent(event.target.value)}
+          onBlur={handleUserAgentSave}
+        />
+        <p className="text-muted-foreground text-xs leading-relaxed">
+          Bazı paneller isteğin hangi uygulamadan geldiğine bakar ve tanımadığına farklı yanıt
+          verir. Sorun yaşamıyorsanız boş bırakın.
         </p>
       </div>
 

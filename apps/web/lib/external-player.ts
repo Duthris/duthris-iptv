@@ -65,6 +65,7 @@ export async function handOff(input: {
     credentialRef: input.template.credentialRef,
     startSecs: input.startSecs ?? 0,
     title: input.title,
+    userAgent: input.template.userAgent,
   });
 
   if (!result.ok) {
@@ -86,6 +87,7 @@ export async function openInExternalPlayer(input: {
   credentialRef?: string | null;
   startSecs?: number;
   title: string;
+  userAgent?: string | null;
 }): Promise<{ ok: boolean; message?: string }> {
   const bridge = getDesktopBridge();
   if (!bridge) return { ok: false, message: "Yalnızca masaüstünde" };

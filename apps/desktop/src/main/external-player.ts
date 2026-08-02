@@ -20,7 +20,7 @@ import { substituteSecret } from "./xtream.js";
  * gets it.
  */
 
-const USER_AGENT = "VLC/3.0.20 LibVLC/3.0.20";
+import { DEFAULT_USER_AGENT } from "../shared/ipc.js";
 
 function candidatePaths(): Array<{ kind: ExternalPlayerKind; path: string }> {
   const programFiles = process.env["ProgramFiles"] ?? "C:\\Program Files";
@@ -66,10 +66,16 @@ export function describeExternalPlayer(path: string): ExternalPlayer | null {
   return { kind, name: LABELS[kind], path };
 }
 
-function argsFor(player: ExternalPlayer, url: string, startSecs: number, title: string): string[] {
+function argsFor(
+  player: ExternalPlayer,
+  url: string,
+  startSecs: number,
+  title: string,
+  userAgent: string,
+): string[] {
   if (player.kind === "vlc") {
     return [
-      `--http-user-agent=${USER_AGENT}`,
+      `--http-user-agent=${userAgent}`,
       ...(startSecs > 0 ? [`--start-time=${Math.floor(startSecs)}`] : []),
       `--meta-title=${title}`,
       url,
@@ -77,7 +83,7 @@ function argsFor(player: ExternalPlayer, url: string, startSecs: number, title: 
   }
 
   return [
-    `--user-agent=${USER_AGENT}`,
+    `--user-agent=${userAgent}`,
     ...(startSecs > 0 ? [`--start=${Math.floor(startSecs)}`] : []),
     `--force-media-title=${title}`,
     url,
@@ -99,10 +105,17 @@ export function openInExternalPlayer(request: OpenExternalRequest): { ok: boolea
   try {
     // Detached so the player outlives this app; without unref a quit here
     // would take the user's film with it.
-    const child = spawn(player.path, argsFor(player, url, request.startSecs ?? 0, request.title), {
-      detached: true,
-      stdio: "ignore",
-    });
+    const child = spawn(
+      player.path,
+      argsFor(
+        player,
+        url,
+        request.startSecs ?? 0,
+        request.title,
+        request.userAgent?.trim() || DEFAULT_USER_AGENT,
+      ),
+      { detached: true, stdio: "ignore" },
+    );
 
     child.on("error", (error) => record(`[external] başlatılamadı: ${error.message}`));
     child.unref();
