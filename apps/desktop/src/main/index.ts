@@ -6,6 +6,7 @@ import { registerIpcHandlers } from "./ipc.js";
 import { registerUpdater } from "./updater.js";
 import { initLogs } from "./logs.js";
 import { pruneXtreamCache } from "./xtream.js";
+import { releaseGlobalMediaKeys } from "./media-keys.js";
 import {
   downloadMediaPath,
   registerDownloadWindow,
@@ -152,3 +153,4 @@ app.on("window-all-closed", () => {
 app.on("before-quit", shutdownTranscodeServer);
 app.on("before-quit", shutdownDownloads);
 app.on("before-quit", destroyTray);
+app.on("will-quit", releaseGlobalMediaKeys);

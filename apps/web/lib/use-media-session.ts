@@ -2,6 +2,8 @@
 
 import * as React from "react";
 
+import { getDesktopBridge } from "./platform";
+
 export interface MediaSessionOptions {
   title: string;
 
@@ -14,6 +16,12 @@ export interface MediaSessionOptions {
   onNext?: (() => void) | undefined;
 
   onSeekBy?: ((seconds: number) => void) | undefined;
+
+  /**
+   * Needed only by the global media keys: the system sends one play/pause key
+   * rather than the separate actions Media Session dispatches.
+   */
+  paused?: boolean;
 }
 
 type MediaSessionAction =
@@ -37,9 +45,10 @@ export function useMediaSession({
   onPrevious,
   onNext,
   onSeekBy,
+  paused = false,
 }: MediaSessionOptions): void {
-  const callbacks = React.useRef({ onPlay, onPause, onPrevious, onNext, onSeekBy });
-  callbacks.current = { onPlay, onPause, onPrevious, onNext, onSeekBy };
+  const callbacks = React.useRef({ onPlay, onPause, onPrevious, onNext, onSeekBy, paused });
+  callbacks.current = { onPlay, onPause, onPrevious, onNext, onSeekBy, paused };
 
   const hasPrevious = Boolean(onPrevious);
   const hasNext = Boolean(onNext);
@@ -73,6 +82,29 @@ export function useMediaSession({
       if (navigator.mediaSession) navigator.mediaSession.metadata = null;
     };
   }, [title, subtitle, artwork, active, hasPrevious, hasNext, hasSeek]);
+
+  /**
+   * The same actions, driven from the system-wide media keys.
+   *
+   * Media Session only sees those keys while this window has focus, which is
+   * exactly the case the desktop shortcut exists to cover. Both routes end in
+   * the same callbacks, so behaviour cannot drift between them.
+   */
+  React.useEffect(() => {
+    if (!active) return;
+    const bridge = getDesktopBridge();
+    if (!bridge) return;
+
+    return bridge.onMediaKey((command) => {
+      const current = callbacks.current;
+      if (command === "playpause") {
+        if (current.paused) current.onPlay();
+        else current.onPause();
+      } else if (command === "next") current.onNext?.();
+      else if (command === "previous") current.onPrevious?.();
+      else current.onPause();
+    });
+  }, [active]);
 }
 
 export function useMediaSessionState(paused: boolean, active: boolean): void {

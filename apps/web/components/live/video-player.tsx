@@ -855,6 +855,7 @@ export function VideoPlayer({
     onPrevious,
     onNext,
     onSeekBy: live ? undefined : seekBy,
+    paused,
   });
 
   useMediaSessionState(paused, Boolean(url));

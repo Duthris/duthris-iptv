@@ -1,16 +1,23 @@
 "use client";
 
-import { Clock, History, Play, Radio, Tag } from "lucide-react";
+import { Bell, BellOff, Clock, History, Play, Radio, Tag } from "lucide-react";
 import type { EpgProgram } from "@iptv/core";
 import { Badge, Button } from "@iptv/ui";
+import { toast } from "sonner";
 
 import { DetailOverlay } from "@/components/library/detail-overlay";
 import { useGuideTime } from "@/lib/use-guide-time";
 import { formatDuration } from "@/lib/format";
+import { reminderId, useReminderStore } from "@/stores/reminder-store";
+
+/** Enough warning to reach the television without being forgotten. */
+const LEAD_MINUTES = 5;
 
 export interface ProgramDetailProps {
   program: EpgProgram | null;
   channelName: string;
+  /** Absent when the guide row is not tied to a channel we can open. */
+  channelId?: string | null;
   /** Enables archive playback when the channel keeps one and the show has ended. */
   onWatchArchive?: (() => void) | undefined;
   onClose: () => void;
@@ -20,11 +27,22 @@ export interface ProgramDetailProps {
 export function ProgramDetail({
   program,
   channelName,
+  channelId,
   onClose,
   onWatch,
   onWatchArchive,
 }: ProgramDetailProps) {
   const { formatTime, formatDate, shiftMs } = useGuideTime();
+
+  const addReminder = useReminderStore((state) => state.add);
+  const removeReminder = useReminderStore((state) => state.remove);
+  const reminders = useReminderStore((state) => state.reminders);
+
+  const reminded =
+    program !== undefined &&
+    program !== null &&
+    Boolean(channelId) &&
+    reminders.some((row) => row.id === reminderId(channelId!, program.start));
 
   const start = program ? program.start + shiftMs : 0;
   const stop = program ? program.stop + shiftMs : 0;
@@ -77,6 +95,36 @@ export function ProgramDetail({
             <Button variant={onWatchArchive ? "outline" : "primary"} onClick={onWatch}>
               <Play /> Kanalı aç
             </Button>
+
+            {/* Only offered before it airs; afterwards there is nothing to wait for. */}
+            {channelId && start > Date.now() ? (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  const id = reminderId(channelId, program.start);
+                  if (reminded) {
+                    removeReminder(id);
+                    toast.success("Hatırlatma kaldırıldı");
+                    return;
+                  }
+
+                  addReminder({
+                    id,
+                    channelId,
+                    channelName,
+                    title: program.title,
+                    startAt: start,
+                    leadMinutes: LEAD_MINUTES,
+                  });
+                  toast.success(`${LEAD_MINUTES} dakika kala hatırlatılacak`, {
+                    description: "Uygulama açık olmalı.",
+                  });
+                }}
+              >
+                {reminded ? <BellOff /> : <Bell />}
+                {reminded ? "Hatırlatmayı kaldır" : "Hatırlat"}
+              </Button>
+            ) : null}
           </div>
         </div>
       ) : null}

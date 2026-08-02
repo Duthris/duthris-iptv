@@ -340,6 +340,7 @@ export default function GuidePage() {
       <ProgramDetail
         program={selected?.program ?? null}
         channelName={selected?.channel.name ?? ""}
+        channelId={selected?.channel.id ?? null}
         onWatchArchive={
           selected && selected.channel.hasArchive && selected.program.stop + shiftMs < now
             ? () => {
