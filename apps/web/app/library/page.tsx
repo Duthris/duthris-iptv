@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BarChart3, Clock, Download, Heart, History, Library, Trash2 } from "lucide-react";
-import { clearHistory, getLiveChannel } from "@iptv/db";
+import { clearHistory, getEpisode, getLiveChannel } from "@iptv/db";
 import { Badge, Button, EmptyState, Skeleton, cn } from "@iptv/ui";
 import { toast } from "sonner";
 
@@ -237,8 +237,16 @@ export default function LibraryPage() {
         {tab === "downloads" ? (
           <DownloadsPanel
             onOpen={(entry) => {
-              if (entry.kind === "vod") setMovieId(entry.itemId);
-              else setSeriesId(entry.itemId);
+              if (entry.kind === "vod") {
+                setMovieId(entry.itemId);
+                return;
+              }
+              // An episode download is keyed by the episode, but the detail
+              // overlay opens a series; the parent has to be looked up.
+              void getEpisode(entry.itemId).then((episode) => {
+                if (episode) setSeriesId(episode.seriesItemId);
+                else toast.error("Bu bölümün dizisi kitaplıkta bulunamadı");
+              });
             }}
           />
         ) : tab === "stats" ? (

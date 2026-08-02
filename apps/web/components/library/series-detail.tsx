@@ -23,6 +23,8 @@ import {
 } from "@/components/library/container-notice";
 import { VideoPlayer } from "@/components/live/video-player";
 import { FavoriteButton } from "@/components/library/favorite-button";
+import { DownloadButton } from "@/components/library/download-button";
+import { localPlaybackUrl, useDownloads } from "@/lib/downloads";
 import { NextEpisodePrompt } from "@/components/library/next-episode-prompt";
 import { ensureEpisodes, groupBySeason, type SeasonGroup } from "@/lib/series-episodes";
 import { resolveEpisodeStreamUrl } from "@/lib/resolve-stream";
@@ -58,6 +60,7 @@ export function SeriesDetail({ seriesId, onClose }: SeriesDetailProps) {
   const [resumeAt, setResumeAt] = React.useState<number | null>(null);
   const [watched, setWatched] = React.useState<Map<string, EpisodeProgress>>(new Map());
   const [coverFailed, setCoverFailed] = React.useState(false);
+  const downloads = useDownloads();
 
   React.useEffect(() => {
     if (!seriesId) return;
@@ -121,8 +124,13 @@ export function SeriesDetail({ seriesId, onClose }: SeriesDetailProps) {
   const currentSeason = seasons.find((group) => group.season === activeSeason) ?? seasons[0];
 
   async function playEpisode(episode: Episode, fromStart = false) {
-    const resolved = await resolveEpisodeStreamUrl(episode.id);
-    if (!resolved) return;
+    // A finished download plays from disk: no provider connection, no ffmpeg,
+    // and it works with the network off.
+    const offline = downloads.byItem.get(episode.id);
+    const local = offline?.status === "done" ? await localPlaybackUrl(offline) : null;
+
+    const url = local ?? (await resolveEpisodeStreamUrl(episode.id))?.url ?? null;
+    if (!url) return;
 
     const progress = watched.get(episode.id);
     const canResume =
@@ -133,7 +141,7 @@ export function SeriesDetail({ seriesId, onClose }: SeriesDetailProps) {
 
     setCountdown(null);
     setResumeAt(canResume ? progress.positionSecs : null);
-    setStreamUrl(resolved.url);
+    setStreamUrl(url);
     setPlaying(episode);
   }
 
@@ -452,16 +460,22 @@ export function SeriesDetail({ seriesId, onClose }: SeriesDetailProps) {
                   };
 
                   return (
-                    <li key={episode.id}>
+                    <li
+                      key={episode.id}
+                      className={cn(
+                        "flex items-center rounded-md",
+                        "duration-fast ease-brand transition-colors",
+                        playable ? "hover:bg-accent/40" : "opacity-55",
+                      )}
+                    >
                       <button
                         type="button"
                         disabled={!playable}
                         onClick={() => void playEpisode(episode)}
                         className={cn(
-                          "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left",
-                          "duration-fast ease-brand transition-colors",
+                          "flex min-w-0 flex-1 items-center gap-3 rounded-md px-3 py-2.5 text-left",
                           "focus-visible:ring-ring/70 focus-visible:outline-none focus-visible:ring-2",
-                          playable ? "hover:bg-accent/40" : "cursor-not-allowed opacity-55",
+                          playable ? null : "cursor-not-allowed",
                         )}
                       >
                         <span className="tabular text-muted-foreground w-8 shrink-0 text-center text-xs">
@@ -499,6 +513,18 @@ export function SeriesDetail({ seriesId, onClose }: SeriesDetailProps) {
                           </Badge>
                         )}
                       </button>
+
+                      <DownloadButton
+                        compact
+                        kind="episode"
+                        itemId={episode.id}
+                        title={`${series.name} · S${episode.season}B${episode.episode}`}
+                        poster={episode.cover ?? series.cover}
+                        resolveUrl={async () =>
+                          (await resolveEpisodeStreamUrl(episode.id))?.url ?? null
+                        }
+                        className="mr-1.5"
+                      />
                     </li>
                   );
                 })}
