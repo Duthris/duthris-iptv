@@ -61,57 +61,61 @@ function Row({
           )}
         </div>
 
-        {entry.status === "downloading" ? (
-          <div className="flex items-center gap-2.5">
-            <Progress
-              value={entry.progress}
-              label={`%${Math.round(entry.progress * 100)}`}
-              className="flex-1"
-            />
-            <span className="tabular text-2xs text-muted-foreground w-9 shrink-0 text-right">
-              %{Math.round(entry.progress * 100)}
+        {/* The controls share this line rather than being centred against the
+            whole card, where they would float between the two rows. */}
+        <div className="flex items-center gap-2.5">
+          {entry.status === "downloading" ? (
+            <>
+              <Progress
+                value={entry.progress}
+                label={`%${Math.round(entry.progress * 100)}`}
+                className="min-w-0 flex-1"
+              />
+              <span className="tabular text-2xs text-muted-foreground shrink-0">
+                %{Math.round(entry.progress * 100)}
+              </span>
+            </>
+          ) : (
+            <span className="tabular text-2xs text-muted-foreground min-w-0 flex-1 truncate">
+              {done ? size(entry.bytes) : (entry.error ?? "")}
+              {done && entry.durationSecs ? ` · ${formatDuration(entry.durationSecs)}` : ""}
             </span>
+          )}
+
+          <div className="flex shrink-0 items-center gap-1">
+            {done ? (
+              <Button size="sm" onClick={() => onOpen(entry)}>
+                İzle
+              </Button>
+            ) : entry.status === "downloading" ? (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Vazgeç"
+                onClick={async () => {
+                  await getDesktopBridge()?.cancelDownload(entry.id);
+                  onChanged();
+                }}
+              >
+                <X />
+              </Button>
+            ) : null}
+
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Sil"
+              className="text-muted-foreground hover:text-destructive"
+              onClick={async () => {
+                await getDesktopBridge()?.removeDownload(entry.id);
+                onChanged();
+                toast.success("İndirme silindi");
+              }}
+            >
+              <Trash2 />
+            </Button>
           </div>
-        ) : (
-          <span className="tabular text-2xs text-muted-foreground">
-            {done ? size(entry.bytes) : (entry.error ?? "")}
-            {done && entry.durationSecs ? ` · ${formatDuration(entry.durationSecs)}` : ""}
-          </span>
-        )}
-      </div>
-
-      <div className="flex shrink-0 items-center gap-1">
-        {done ? (
-          <Button size="sm" onClick={() => onOpen(entry)}>
-            İzle
-          </Button>
-        ) : entry.status === "downloading" ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Vazgeç"
-            onClick={async () => {
-              await getDesktopBridge()?.cancelDownload(entry.id);
-              onChanged();
-            }}
-          >
-            <X />
-          </Button>
-        ) : null}
-
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Sil"
-          className="text-muted-foreground hover:text-destructive"
-          onClick={async () => {
-            await getDesktopBridge()?.removeDownload(entry.id);
-            onChanged();
-            toast.success("İndirme silindi");
-          }}
-        >
-          <Trash2 />
-        </Button>
+        </div>
       </div>
     </div>
   );
