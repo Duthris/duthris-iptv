@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { Download, Search, X } from "lucide-react";
-import type { SubtitleCandidate } from "@iptv/core";
 import { Badge, Button, EmptyState, Select, Spinner, cn } from "@iptv/ui";
 import { toast } from "sonner";
 
@@ -10,6 +9,7 @@ import { languageName } from "@/lib/languages";
 import {
   downloadSubtitle,
   searchSubtitles,
+  type SubtitleCandidate,
   type SubtitleQuery,
 } from "@/lib/opensubtitles";
 

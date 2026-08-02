@@ -12,7 +12,7 @@ import { PlayerMenu, type TrackOption } from "@/components/live/player-menu";
 import { VolumeIndicator } from "@/components/live/volume-indicator";
 import { SubtitleOverlay } from "@/components/live/subtitle-overlay";
 import { SubtitleSearch } from "@/components/live/subtitle-search";
-import type { SubtitleQuery } from "@/lib/opensubtitles";
+import { isSubtitleSearchAvailable, type SubtitleQuery } from "@/lib/opensubtitles";
 import { languageName } from "@/lib/languages";
 import { findCueAt, parseSubtitles, type SubtitleCue } from "@/lib/subtitles";
 import { useMediaSession, useMediaSessionState } from "@/lib/use-media-session";
@@ -1343,6 +1343,26 @@ export function VideoPlayer({
         }}
       />
 
+      {url && !live ? (
+        <SubtitleSearch
+          open={searchOpen}
+          onClose={() => setSearchOpen(false)}
+          query={subtitleSearch ?? null}
+          onLoaded={(text, name) => {
+            const cues = parseSubtitles(text);
+            if (cues.length === 0) {
+              toast.error("İndirilen altyazı okunamadı");
+              return;
+            }
+            setExternalCues(cues);
+            setExternalName(name);
+            setExternalActive(true);
+            setSubtitleIndex(null);
+            setSubtitleDelayMs(0);
+          }}
+        />
+      ) : null}
+
       {url && state.status !== "error" ? (
         <PlayerControls
           videoRef={videoRef}
@@ -1386,7 +1406,7 @@ export function VideoPlayer({
           onSelectQuality={(id) => setManualLevel(Number(id))}
           subtitleDelayMs={subtitleDelayMs}
           onSearchSubtitle={
-            subtitleSearch ? () => {
+            subtitleSearch && isSubtitleSearchAvailable() ? () => {
               setMenuOpen(false);
               setSearchOpen(true);
             } : undefined

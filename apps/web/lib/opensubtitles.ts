@@ -1,26 +1,22 @@
 "use client";
 
-import {
-  OpenSubtitlesClient,
-  cleanTitleForSearch,
-  withRequestQueue,
-  type SubtitleCandidate,
-  type SubtitleSearchInput,
-} from "@iptv/core";
+import { cleanTitleForSearch } from "@iptv/core";
 
-import { getHttpClient } from "@/lib/http";
+import { getDesktopBridge, type SubtitleSearchResult } from "@/lib/platform";
 import { useSettingsStore } from "@/stores/settings-store";
 
 /**
- * Subtitle search and download.
+ * Subtitle search, routed through the main process.
  *
- * The service rejects generic user agents, so a real product name and version
- * are sent. Downloads are rate limited per key rather than per user: an
- * anonymous consumer gets a hundred a day, which is ample for one household
- * and would not be for a crowd.
+ * It cannot run in the renderer. The API needs an `Api-Key` header, which
+ * makes the browser send a CORS preflight, and the service answers that
+ * preflight with 403 "User agent required" — a header the browser refuses to
+ * let scripts set. The request therefore fails before it is sent, no matter
+ * what the response headers say. Main has no preflight and sets the header
+ * itself, so the whole exchange happens there.
+ *
+ * That makes this desktop-only, like audio track selection.
  */
-const USER_AGENT = "DuthrisIPTV v1.4.0";
-
 const BUILD_TIME_KEY = process.env["NEXT_PUBLIC_OPENSUBTITLES_KEY"] ?? "";
 
 export function resolveOpenSubtitlesKey(): string | null {
@@ -33,18 +29,12 @@ export function hasBuildTimeOpenSubtitlesKey(): boolean {
   return BUILD_TIME_KEY.trim() !== "";
 }
 
-let cached: { key: string; client: OpenSubtitlesClient } | null = null;
-
-function getClient(key: string): OpenSubtitlesClient {
-  if (cached?.key === key) return cached.client;
-  const client = new OpenSubtitlesClient({
-    apiKey: key,
-    userAgent: USER_AGENT,
-    http: withRequestQueue(getHttpClient(), { minIntervalMs: 250, maxRetries: 1 }),
-  });
-  cached = { key, client };
-  return client;
+/** True when searching is possible at all: desktop shell plus a key. */
+export function isSubtitleSearchAvailable(): boolean {
+  return getDesktopBridge() !== null && resolveOpenSubtitlesKey() !== null;
 }
+
+export type SubtitleCandidate = SubtitleSearchResult;
 
 export interface SubtitleQuery {
   title: string;
@@ -58,10 +48,12 @@ export async function searchSubtitles(
   query: SubtitleQuery,
   languages: string,
 ): Promise<SubtitleCandidate[]> {
-  const key = resolveOpenSubtitlesKey();
-  if (!key) return [];
+  const bridge = getDesktopBridge();
+  const apiKey = resolveOpenSubtitlesKey();
+  if (!bridge || !apiKey) return [];
 
-  const input: SubtitleSearchInput = {
+  return bridge.searchSubtitles({
+    apiKey,
     languages,
     // Provider titles carry release noise that derails a text search.
     query: cleanTitleForSearch(query.title),
@@ -69,9 +61,7 @@ export async function searchSubtitles(
     year: query.year ?? null,
     season: query.season ?? null,
     episode: query.episode ?? null,
-  };
-
-  return getClient(key).search(input);
+  });
 }
 
 export interface DownloadedSubtitle {
@@ -80,18 +70,10 @@ export interface DownloadedSubtitle {
   remaining: number | null;
 }
 
-/**
- * Resolves a link and fetches the file.
- *
- * Two steps because the link is temporary and issued per request; the first
- * call is the one that costs quota, so it only runs once the user has picked.
- */
 export async function downloadSubtitle(fileId: number): Promise<DownloadedSubtitle> {
-  const key = resolveOpenSubtitlesKey();
-  if (!key) throw new Error("OpenSubtitles anahtarı ayarlanmamış");
+  const bridge = getDesktopBridge();
+  const apiKey = resolveOpenSubtitlesKey();
+  if (!bridge || !apiKey) throw new Error("Altyazı arama bu ortamda kullanılamıyor");
 
-  const download = await getClient(key).requestDownload(fileId);
-  const text = await getHttpClient().text(download.link);
-
-  return { text, fileName: download.fileName, remaining: download.remaining };
+  return bridge.downloadSubtitle(apiKey, fileId);
 }

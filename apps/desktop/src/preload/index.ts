@@ -5,6 +5,9 @@ import {
   SECRET_PLACEHOLDER,
   type AppInfo,
   type PickedPlaylistFile,
+  type SubtitleDownloadResult,
+  type SubtitleSearchRequest,
+  type SubtitleSearchResult,
   type TranscodeSession,
 } from "../shared/ipc.js";
 
@@ -41,6 +44,12 @@ const bridge = {
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.openExternal, url),
 
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke(IPC.getAppInfo),
+
+  searchSubtitles: (request: SubtitleSearchRequest): Promise<SubtitleSearchResult[]> =>
+    ipcRenderer.invoke(IPC.searchSubtitles, request),
+
+  downloadSubtitle: (apiKey: string, fileId: number): Promise<SubtitleDownloadResult> =>
+    ipcRenderer.invoke(IPC.downloadSubtitle, apiKey, fileId),
 };
 
 contextBridge.exposeInMainWorld("iptvDesktop", bridge);

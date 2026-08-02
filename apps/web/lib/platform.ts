@@ -30,6 +30,17 @@ export interface TranscodeSession {
   subtitleTracks: MediaTrack[];
 }
 
+export interface SubtitleSearchResult {
+  fileId: number;
+  fileName: string | null;
+  language: string;
+  release: string;
+  downloadCount: number;
+  hearingImpaired: boolean;
+  machineTranslated: boolean;
+  fps: number | null;
+}
+
 export interface DesktopBridge {
   isDesktop: true;
 
@@ -48,6 +59,19 @@ export interface DesktopBridge {
   stopTranscode(sessionUrl: string): Promise<void>;
   setLaunchAtStartup(enabled: boolean): Promise<void>;
   openExternal(url: string): Promise<void>;
+  searchSubtitles(request: {
+    apiKey: string;
+    languages: string;
+    query?: string;
+    tmdbId?: number | null;
+    year?: number | null;
+    season?: number | null;
+    episode?: number | null;
+  }): Promise<SubtitleSearchResult[]>;
+  downloadSubtitle(
+    apiKey: string,
+    fileId: number,
+  ): Promise<{ text: string; fileName: string | null; remaining: number | null }>;
   getAppInfo(): Promise<{
     version: string;
     platform: string;
