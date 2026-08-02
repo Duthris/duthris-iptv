@@ -8,9 +8,14 @@ import { join } from "node:path";
  * from the tray the way a television does — but only after the user has asked
  * for that, since silently refusing to close is hostile. Quitting from the tray
  * menu, or from the taskbar, still ends the process.
+ *
+ * The icon exists only while a window is hidden. It is the way back to a window
+ * that cannot be clicked, so with a window on screen it has nothing to offer,
+ * and with the setting off it must never appear at all.
  */
 let tray: Tray | null = null;
 let quitting = false;
+let getWindowRef: (() => BrowserWindow | null) | null = null;
 
 export function isQuitting(): boolean {
   return quitting;
@@ -42,7 +47,11 @@ export function shouldHideOnClose(): boolean {
   return options.minimiseToTray && !quitting;
 }
 
-export function createTray(getWindow: () => BrowserWindow | null): void {
+export function registerTray(getWindow: () => BrowserWindow | null): void {
+  getWindowRef = getWindow;
+}
+
+function buildTray(): void {
   if (tray) return;
 
   const image = nativeImage.createFromPath(iconPath());
@@ -50,7 +59,7 @@ export function createTray(getWindow: () => BrowserWindow | null): void {
   tray.setToolTip("Duthris IPTV");
 
   const show = () => {
-    const window = getWindow();
+    const window = getWindowRef?.() ?? null;
     if (!window) return;
     if (window.isMinimized()) window.restore();
     window.show();
@@ -78,6 +87,21 @@ export function createTray(getWindow: () => BrowserWindow | null): void {
 export function destroyTray(): void {
   tray?.destroy();
   tray = null;
+}
+
+/**
+ * Brings the icon into line with what is on screen.
+ *
+ * Called whenever a window appears or disappears. A leftover icon is worse
+ * than none: clicking it reaches a window that no longer exists, and the
+ * single-instance lock then stops the app being started again.
+ */
+export function syncTray(): void {
+  const window = getWindowRef?.() ?? null;
+  const wanted = window !== null && !window.isDestroyed() && !window.isVisible();
+
+  if (wanted) buildTray();
+  else destroyTray();
 }
 
 export function setLaunchAtStartup(enabled: boolean): void {
