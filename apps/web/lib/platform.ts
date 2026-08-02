@@ -96,6 +96,16 @@ export interface DesktopBridge {
 
   resolveStreamUrl(credentialRef: string, urlTemplate: string): Promise<string | null>;
 
+  /** Panel request made in the main process so the password stays there. */
+  xtreamFetch(request: {
+    credentialRef: string;
+    urlTemplate: string;
+    maxAgeMs?: number;
+  }): Promise<
+    { ok: true; body: string; fromCache: boolean } | { ok: false; message: string; status: number }
+  >;
+  xtreamClearCache(): Promise<void>;
+
   startTranscode(sourceUrl: string): Promise<TranscodeSession>;
   stopTranscode(sessionUrl: string): Promise<void>;
   setLaunchAtStartup(enabled: boolean): Promise<void>;

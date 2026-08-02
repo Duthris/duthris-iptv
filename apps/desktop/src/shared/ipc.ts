@@ -28,6 +28,8 @@ export const IPC = {
   removeDownload: "download:remove",
   downloadUrl: "download:url",
   downloadEvent: "download:event",
+  xtreamFetch: "xtream:fetch",
+  xtreamClearCache: "xtream:clear-cache",
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];
@@ -38,6 +40,18 @@ export interface PickedPlaylistFile {
 }
 
 export const SECRET_PLACEHOLDER = "__IPTV_SECRET__";
+
+export interface XtreamFetchRequest {
+  credentialRef: string;
+  /** Carries SECRET_PLACEHOLDER where the password belongs. */
+  urlTemplate: string;
+  /** Omitted or zero bypasses the disk cache in both directions. */
+  maxAgeMs?: number;
+}
+
+export type XtreamFetchResult =
+  | { ok: true; body: string; fromCache: boolean }
+  | { ok: false; message: string; status: number };
 
 export interface ResolveStreamRequest {
   credentialRef: string;

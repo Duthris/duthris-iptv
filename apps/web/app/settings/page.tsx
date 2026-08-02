@@ -52,6 +52,7 @@ import { GUIDE_TIME_ZONES } from "@/lib/use-guide-time";
 import { useUpdater } from "@/lib/use-updater";
 import { hasBuildTimeOpenSubtitlesKey } from "@/lib/opensubtitles";
 import { hasBuildTimeTmdbToken } from "@/lib/tmdb";
+import { clearXtreamDiskCache } from "@/lib/xtream-runtime";
 import { usePlaylistStore } from "@/stores/playlist-store";
 import { useProfileStore } from "@/stores/profile-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -777,6 +778,8 @@ export default function SettingsPage() {
                   onClick={async () => {
                     setBusy(true);
                     await eraseAllData();
+                    // The panel cache lives on disk, outside the database.
+                    await clearXtreamDiskCache();
                     await Promise.all([refreshSources(), refreshProfiles()]);
                     setBusy(false);
                     setConfirmErase(false);

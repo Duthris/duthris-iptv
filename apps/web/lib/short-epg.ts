@@ -1,14 +1,9 @@
 "use client";
 
-import {
-  XtreamClient,
-  parseXtreamCredentials,
-  withRequestQueue,
-  type ShortEpgProgramme,
-} from "@iptv/core";
-import { getLiveChannel, getSource, readCredential, type NowNext } from "@iptv/db";
+import type { ShortEpgProgramme } from "@iptv/core";
+import { getLiveChannel, getSource, type NowNext } from "@iptv/db";
 
-import { getHttpClient } from "@/lib/http";
+import { createXtreamClient } from "@/lib/xtream-runtime";
 
 /**
  * Now and next from the panel, for channels the XMLTV guide does not cover.
@@ -68,15 +63,11 @@ async function fetchShortEpg(channelId: string): Promise<NowNext | null> {
   const source = await getSource(channel.sourceId);
   if (!source || source.kind !== "xtream" || !source.username) return null;
 
-  const password = await readCredential(source.credentialRef);
-  if (!password) return null;
+  // No disk cache here: what is on now changes by the minute. The in-memory
+  // TTL above is the only caching this call wants.
+  const client = await createXtreamClient(source);
+  if (!client) return null;
 
-  const credentials = parseXtreamCredentials(source.url, {
-    username: source.username,
-    password,
-  });
-
-  const client = new XtreamClient(withRequestQueue(getHttpClient()), credentials);
   const programmes = await client.getChannelProgrammes(channel.streamId, 4);
   return toNowNext(programmes, channelId);
 }

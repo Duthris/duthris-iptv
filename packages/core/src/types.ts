@@ -58,6 +58,12 @@ export interface SourceStats {
   seriesCount: number;
   categoryCount: number;
   epgProgramCount: number;
+
+  /**
+   * Films whose container plays without conversion. Optional because sources
+   * imported before this was measured have no value to report.
+   */
+  directPlayVodCount?: number;
 }
 
 export interface Category {

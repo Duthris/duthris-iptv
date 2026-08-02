@@ -4,14 +4,15 @@ import { basename } from "node:path";
 
 import {
   IPC,
-  SECRET_PLACEHOLDER,
   type AppInfo,
   type PickedPlaylistFile,
   type ResolveStreamRequest,
   type ShellSettings,
   type StartDownloadRequest,
   type SubtitleSearchRequest,
+  type XtreamFetchRequest,
 } from "../shared/ipc.js";
+import { clearXtreamCache, fetchXtream, substituteSecret } from "./xtream.js";
 import { deleteCredential, readCredential, saveCredential } from "./credentials.js";
 import { createTranscodeSession, stopTranscodeSession } from "./transcode.js";
 import { downloadSubtitle, searchSubtitles } from "./subtitles.js";
@@ -79,12 +80,14 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     const secret = readCredential(request.credentialRef);
     if (secret === null) return null;
 
-    return request.urlTemplate
-      .split(encodeURIComponent(SECRET_PLACEHOLDER))
-      .join(encodeURIComponent(secret))
-      .split(SECRET_PLACEHOLDER)
-      .join(encodeURIComponent(secret));
+    return substituteSecret(request.urlTemplate, secret);
   });
+
+  ipcMain.handle(IPC.xtreamFetch, (_event, request: XtreamFetchRequest) => {
+    return fetchXtream(request);
+  });
+
+  ipcMain.handle(IPC.xtreamClearCache, () => clearXtreamCache());
 
   ipcMain.handle(IPC.startTranscode, async (_event, sourceUrl: string) => {
     return createTranscodeSession(sourceUrl);

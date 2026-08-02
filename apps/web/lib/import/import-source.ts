@@ -18,11 +18,60 @@ import {
   type CreateSourceInput,
 } from "@iptv/db";
 
-import type { EpgImportResult, ImportJob, ImportRequest, ImportResponse } from "./protocol";
+import type {
+  EpgImportResult,
+  ImportCommand,
+  ImportJob,
+  ImportRequest,
+  ImportResponse,
+} from "./protocol";
+import { getDesktopBridge } from "@/lib/platform";
 
 export interface ImportCallbacks {
   onProgress?: (progress: ParseProgress) => void;
   onSourceCreated?: (sourceId: string) => void;
+}
+
+/**
+ * Runs one panel request on the worker's behalf.
+ *
+ * The worker cannot reach the preload bridge, and the whole point of the
+ * detour is that the password stays in the main process.
+ */
+async function relayPanelRequest(
+  worker: Worker,
+  message: Extract<ImportResponse, { type: "http-request" }>,
+): Promise<void> {
+  const bridge = getDesktopBridge();
+
+  if (!bridge) {
+    worker.postMessage({
+      type: "http-response",
+      callId: message.callId,
+      ok: false,
+      message: "Masaüstü köprüsü yok",
+      status: 0,
+    } satisfies ImportCommand);
+    return;
+  }
+
+  const result = await bridge.xtreamFetch({
+    credentialRef: message.credentialRef,
+    urlTemplate: message.url,
+    maxAgeMs: message.maxAgeMs,
+  });
+
+  worker.postMessage(
+    (result.ok
+      ? { type: "http-response", callId: message.callId, ok: true, body: result.body }
+      : {
+          type: "http-response",
+          callId: message.callId,
+          ok: false,
+          message: result.message,
+          status: result.status,
+        }) satisfies ImportCommand,
+  );
 }
 
 export interface ImportResult {
@@ -58,6 +107,14 @@ function runImport(
 
     worker.addEventListener("message", (event: MessageEvent<ImportResponse>) => {
       const message = event.data;
+
+      // Relay requests carry no requestId, so they are handled before the
+      // filter below would drop them.
+      if (message.type === "http-request") {
+        void relayPanelRequest(worker, message);
+        return;
+      }
+
       if (message.requestId !== requestId) return;
 
       switch (message.type) {
@@ -180,6 +237,8 @@ export function importEpg(
 
     worker.addEventListener("message", (event: MessageEvent<ImportResponse>) => {
       const message = event.data;
+      // An EPG import makes no panel calls, so a relay request here is noise.
+      if (message.type === "http-request") return;
       if (message.requestId !== requestId) return;
 
       if (message.type === "progress") {
@@ -217,18 +276,38 @@ export async function refreshSource(
   let request: ImportJob;
 
   if (source.kind === "xtream") {
-    const password = await readCredential(source.credentialRef);
-    if (!source.username || !password) {
+    if (!source.username) {
       throw new Error("Kaynağın giriş bilgileri eksik — playlist'i yeniden ekleyin");
     }
-    request = {
-      type: "import-xtream",
-      sourceId,
-      baseUrl: source.url,
-      username: source.username,
-      password,
-      preferredFormat: source.preferredFormat,
-    };
+
+    const bridge = getDesktopBridge();
+
+    // On the desktop the worker gets a placeholder and the main process fills
+    // in the secret; a refresh never pulls the password out of storage here.
+    if (bridge && source.credentialRef) {
+      request = {
+        type: "import-xtream",
+        sourceId,
+        baseUrl: source.url,
+        username: source.username,
+        password: bridge.secretPlaceholder,
+        credentialRef: source.credentialRef,
+        preferredFormat: source.preferredFormat,
+      };
+    } else {
+      const password = await readCredential(source.credentialRef);
+      if (!password) {
+        throw new Error("Kaynağın giriş bilgileri eksik — playlist'i yeniden ekleyin");
+      }
+      request = {
+        type: "import-xtream",
+        sourceId,
+        baseUrl: source.url,
+        username: source.username,
+        password,
+        preferredFormat: source.preferredFormat,
+      };
+    }
   } else if (source.kind === "m3u-url") {
     request = { type: "import-m3u-url", sourceId, url: source.url };
   } else {
