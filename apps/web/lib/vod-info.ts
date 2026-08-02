@@ -1,9 +1,9 @@
 "use client";
 
-import { XtreamClient, parseXtreamCredentials, withRequestQueue, type VodInfo } from "@iptv/core";
-import { getSource, getVodItem, readCredential } from "@iptv/db";
+import type { VodInfo } from "@iptv/core";
+import { getSource, getVodItem } from "@iptv/db";
 
-import { getHttpClient } from "@/lib/http";
+import { CATALOG_MAX_AGE_MS, createXtreamClient } from "@/lib/xtream-runtime";
 
 const cache = new Map<string, VodInfo | null>();
 const pending = new Map<string, Promise<VodInfo | null>>();
@@ -15,15 +15,9 @@ async function fetchVodInfo(movieId: string): Promise<VodInfo | null> {
   const source = await getSource(item.sourceId);
   if (!source || source.kind !== "xtream" || !source.username) return null;
 
-  const password = await readCredential(source.credentialRef);
-  if (!password) return null;
+  const client = await createXtreamClient(source, { maxAgeMs: CATALOG_MAX_AGE_MS });
+  if (!client) return null;
 
-  const credentials = parseXtreamCredentials(source.url, {
-    username: source.username,
-    password,
-  });
-
-  const client = new XtreamClient(withRequestQueue(getHttpClient()), credentials);
   return client.getVodInfo(item.streamId);
 }
 

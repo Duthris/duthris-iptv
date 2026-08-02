@@ -1,15 +1,14 @@
 "use client";
 
 import { FileWarning } from "lucide-react";
+import { isDirectPlayContainer } from "@iptv/core";
 
 import { isDesktop } from "@/lib/platform";
 
-const PLAYABLE = new Set(["mp4", "m4v", "webm", "mov"]);
-
 export function isBrowserPlayableContainer(container: string | null): boolean {
+  // The desktop build transcodes, so nothing is off limits there.
   if (isDesktop()) return true;
-  if (!container) return true;
-  return PLAYABLE.has(container.replace(/^\./, "").toLowerCase());
+  return isDirectPlayContainer(container);
 }
 
 export function UnsupportedContainerNotice({ container }: { container: string | null }) {

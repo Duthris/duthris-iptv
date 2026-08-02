@@ -5,6 +5,7 @@ import { configureSecureDns } from "./dns.js";
 import { registerIpcHandlers } from "./ipc.js";
 import { registerUpdater } from "./updater.js";
 import { initLogs } from "./logs.js";
+import { pruneXtreamCache } from "./xtream.js";
 import {
   downloadMediaPath,
   registerDownloadWindow,
@@ -106,6 +107,7 @@ app.whenReady().then(() => {
   if (!isDev) handleRendererScheme();
   installNetworkPolicies(devServer);
   void initLogs();
+  void pruneXtreamCache();
   registerIpcHandlers(() => mainWindow);
   registerUpdater(() => mainWindow);
   registerDownloadWindow(() => mainWindow);

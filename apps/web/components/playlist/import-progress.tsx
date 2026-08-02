@@ -5,6 +5,7 @@ import type { ParseProgress } from "@iptv/core";
 import { Progress, cn } from "@iptv/ui";
 
 import { formatCount } from "@/lib/format";
+import { isDesktop } from "@/lib/platform";
 
 const PHASE_META: Record<
   ParseProgress["phase"],
@@ -88,12 +89,37 @@ export function ImportProgress({
   );
 }
 
+/**
+ * Sets expectations before the user goes looking.
+ *
+ * Most of this catalog ships in containers a browser cannot open, which is the
+ * single most confusing thing about the app; saying so at import time is much
+ * kinder than a title that silently refuses to start.
+ */
+function compatibilityNote(vodCount: number, directPlayVodCount: number | undefined): string | null {
+  if (directPlayVodCount === undefined || vodCount <= 0) return null;
+
+  const direct = Math.round((directPlayVodCount / vodCount) * 100);
+  if (direct >= 100) return null;
+
+  return isDesktop()
+    ? `Filmlerin %${direct}'i doğrudan oynatılır; kalanı izlerken arka planda dönüştürülür.`
+    : `Filmlerin %${direct}'i tarayıcıda oynatılabilir. Kalanı MKV/AVI gibi kapsayıcılarda ` +
+        "olduğu için masaüstü sürümü gerekir.";
+}
+
 export function ImportSuccess({
   sourceName,
   stats,
 }: {
   sourceName: string;
-  stats: { liveCount: number; vodCount: number; seriesCount: number; categoryCount: number };
+  stats: {
+    liveCount: number;
+    vodCount: number;
+    seriesCount: number;
+    categoryCount: number;
+    directPlayVodCount?: number;
+  };
 }) {
   const items = [
     { label: "Canlı kanal", value: stats.liveCount },
@@ -101,6 +127,8 @@ export function ImportSuccess({
     { label: "Dizi", value: stats.seriesCount },
     { label: "Kategori", value: stats.categoryCount },
   ].filter((item) => item.value > 0);
+
+  const compatibility = compatibilityNote(stats.vodCount, stats.directPlayVodCount);
 
   return (
     <div className="border-success/25 bg-success/[0.06] flex flex-col gap-4 rounded-lg border p-5">
@@ -119,6 +147,10 @@ export function ImportSuccess({
           </div>
         ))}
       </dl>
+
+      {compatibility ? (
+        <p className="text-2xs text-muted-foreground leading-relaxed">{compatibility}</p>
+      ) : null}
     </div>
   );
 }

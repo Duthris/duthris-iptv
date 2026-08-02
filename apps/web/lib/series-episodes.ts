@@ -1,9 +1,9 @@
 "use client";
 
-import { XtreamClient, parseXtreamCredentials, withRequestQueue, type Episode } from "@iptv/core";
-import { getSeriesItem, getSource, listEpisodes, readCredential, saveEpisodes } from "@iptv/db";
+import type { Episode } from "@iptv/core";
+import { getSeriesItem, getSource, listEpisodes, saveEpisodes } from "@iptv/db";
 
-import { getHttpClient } from "./http";
+import { CATALOG_MAX_AGE_MS, createXtreamClient } from "./xtream-runtime";
 
 const pending = new Map<string, Promise<Episode[]>>();
 
@@ -36,17 +36,11 @@ async function fetchEpisodes(seriesItemId: string): Promise<Episode[]> {
   const source = await getSource(series.sourceId);
   if (!source || source.kind !== "xtream" || !source.username) return [];
 
-  const password = await readCredential(source.credentialRef);
-  if (!password) {
+  const client = await createXtreamClient(source, { maxAgeMs: CATALOG_MAX_AGE_MS });
+  if (!client) {
     throw new Error("Kaynağın giriş bilgileri okunamadı");
   }
 
-  const credentials = parseXtreamCredentials(source.url, {
-    username: source.username,
-    password,
-  });
-
-  const client = new XtreamClient(withRequestQueue(getHttpClient()), credentials);
   const episodes = await client.getSeriesEpisodes(series.seriesId, seriesItemId, series.sourceId);
 
   await saveEpisodes(seriesItemId, episodes);

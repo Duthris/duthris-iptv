@@ -15,6 +15,8 @@ export interface DownloadButtonProps {
   poster?: string | null;
   /** Resolves the source stream; called only when a download actually starts. */
   resolveUrl: () => Promise<string | null>;
+  /** Icon-sized variant for dense rows such as the season tree. */
+  compact?: boolean;
   className?: string;
 }
 
@@ -30,6 +32,7 @@ export function DownloadButton({
   title,
   poster,
   resolveUrl,
+  compact = false,
   className,
 }: DownloadButtonProps) {
   const { byItem, refresh } = useDownloads();
@@ -57,10 +60,77 @@ export function DownloadButton({
     }
   };
 
+  // The season tree has one of these per row, so the compact form stays a
+  // single icon-sized control and carries its state in the icon itself.
+  if (compact) {
+    if (entry?.status === "downloading") {
+      return (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          title="İndirmeyi durdur"
+          aria-label="İndirmeyi durdur"
+          className={cn("shrink-0", className)}
+          onClick={async () => {
+            await getDesktopBridge()?.cancelDownload(entry.id);
+            refresh();
+          }}
+        >
+          <span className="tabular text-2xs text-muted-foreground">
+            %{Math.round(entry.progress * 100)}
+          </span>
+        </Button>
+      );
+    }
+
+    if (entry?.status === "done") {
+      return (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          title="İndirildi — silmek için tıkla"
+          aria-label="İndirmeyi sil"
+          className={cn("text-primary hover:text-destructive shrink-0", className)}
+          onClick={async () => {
+            await getDesktopBridge()?.removeDownload(entry.id);
+            refresh();
+            toast.success("İndirme silindi");
+          }}
+        >
+          <Check />
+        </Button>
+      );
+    }
+
+    return (
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        loading={busy}
+        title={entry?.status === "failed" ? (entry.error ?? "İndirme başarısız") : "İndir"}
+        aria-label="İndir"
+        className={cn(
+          "shrink-0",
+          entry?.status === "failed" ? "text-destructive" : "text-muted-foreground",
+          className,
+        )}
+        onClick={begin}
+      >
+        <Download />
+      </Button>
+    );
+  }
+
   if (entry?.status === "downloading") {
     return (
       <div className={cn("flex min-w-40 flex-col gap-1.5", className)}>
-        <Progress value={entry.progress} label={`İndiriliyor · %${Math.round(entry.progress * 100)}`} />
+        <span className="tabular text-2xs text-muted-foreground">
+          İndiriliyor · %{Math.round(entry.progress * 100)}
+        </span>
+        <Progress
+          value={entry.progress}
+          label={`İndiriliyor · %${Math.round(entry.progress * 100)}`}
+        />
         <Button
           variant="ghost"
           size="sm"

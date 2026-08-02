@@ -13,6 +13,8 @@ import {
   type ShellSettings,
   type StartDownloadRequest,
   type UpdateState,
+  type XtreamFetchRequest,
+  type XtreamFetchResult,
 } from "../shared/ipc.js";
 
 const bridge = {
@@ -35,6 +37,11 @@ const bridge = {
 
   resolveStreamUrl: (credentialRef: string, urlTemplate: string): Promise<string | null> =>
     ipcRenderer.invoke(IPC.resolveStreamUrl, { credentialRef, urlTemplate }),
+
+  xtreamFetch: (request: XtreamFetchRequest): Promise<XtreamFetchResult> =>
+    ipcRenderer.invoke(IPC.xtreamFetch, request),
+
+  xtreamClearCache: (): Promise<void> => ipcRenderer.invoke(IPC.xtreamClearCache),
 
   startTranscode: (sourceUrl: string): Promise<TranscodeSession> =>
     ipcRenderer.invoke(IPC.startTranscode, sourceUrl),
