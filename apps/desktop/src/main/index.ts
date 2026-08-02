@@ -3,6 +3,16 @@ import { join } from "node:path";
 
 import { configureSecureDns } from "./dns.js";
 import { registerIpcHandlers } from "./ipc.js";
+import { registerUpdater } from "./updater.js";
+import { initLogs } from "./logs.js";
+import {
+  createTray,
+  destroyTray,
+  isQuitting,
+  markQuitting,
+  shouldHideOnClose,
+  startedHidden,
+} from "./tray.js";
 import {
   RENDERER_ORIGIN,
   handleRendererScheme,
@@ -50,7 +60,15 @@ function createWindow(): void {
     },
   });
 
-  mainWindow.once("ready-to-show", () => mainWindow?.show());
+  mainWindow.once("ready-to-show", () => {
+    if (!startedHidden()) mainWindow?.show();
+  });
+
+  mainWindow.on("close", (event) => {
+    if (!shouldHideOnClose()) return;
+    event.preventDefault();
+    mainWindow?.hide();
+  });
 
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -81,7 +99,10 @@ function createWindow(): void {
 app.whenReady().then(() => {
   if (!isDev) handleRendererScheme();
   installNetworkPolicies(devServer);
+  void initLogs();
   registerIpcHandlers(() => mainWindow);
+  registerUpdater(() => mainWindow);
+  createTray(() => mainWindow);
 
   void configureSecureDns();
 
@@ -92,8 +113,11 @@ app.whenReady().then(() => {
   });
 });
 
+app.on("before-quit", markQuitting);
+
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  if (process.platform !== "darwin" && isQuitting()) app.quit();
 });
 
 app.on("before-quit", shutdownTranscodeServer);
+app.on("before-quit", destroyTray);

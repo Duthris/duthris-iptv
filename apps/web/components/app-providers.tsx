@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 
 import { AppearanceEffects } from "@/components/appearance-effects";
+import { UpdateBanner } from "@/components/update-banner";
 import { useAutoRefresh } from "@/lib/auto-refresh";
 import { installDesktopIntegration } from "@/lib/desktop-bootstrap";
 import { useProfileStore } from "@/stores/profile-store";
@@ -43,6 +44,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       disableTransitionOnChange
     >
       <AppearanceEffects />
+      <UpdateBanner />
       <BootstrapLocalData>{children}</BootstrapLocalData>
       <Toaster
         position="bottom-right"

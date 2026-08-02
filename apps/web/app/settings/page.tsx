@@ -4,11 +4,13 @@ import * as React from "react";
 import { toast } from "sonner";
 import {
   AlertTriangle,
+  ArrowUpCircle,
   CalendarClock,
   Database,
   Download,
   HardDrive,
   Lock,
+  MonitorCog,
   MonitorPlay,
   RefreshCw,
   Sparkles,
@@ -45,7 +47,9 @@ import {
 } from "@iptv/ui";
 
 import { AppShell } from "@/components/app-shell";
+import { DesktopShellSettings } from "@/components/settings/desktop-shell";
 import { GUIDE_TIME_ZONES } from "@/lib/use-guide-time";
+import { useUpdater } from "@/lib/use-updater";
 import { hasBuildTimeOpenSubtitlesKey } from "@/lib/opensubtitles";
 import { hasBuildTimeTmdbToken } from "@/lib/tmdb";
 import { usePlaylistStore } from "@/stores/playlist-store";
@@ -151,6 +155,21 @@ export default function SettingsPage() {
   React.useEffect(() => {
     void countTmdbCache().then(setTmdbCount);
   }, []);
+
+  const updater = useUpdater();
+  const updateLabel = !updater.supported
+    ? "Güncelleme yalnızca masaüstü uygulamasında çalışır."
+    : updater.state.status === "current"
+      ? "En güncel sürümü kullanıyorsun."
+      : updater.state.status === "downloading"
+        ? `İndiriliyor · %${updater.state.percent}`
+        : updater.state.status === "error"
+          ? `Denetim başarısız: ${updater.state.message}`
+          : updater.state.status === "unsupported"
+            ? updater.state.reason === "portable"
+              ? "Taşınabilir sürüm kendini güncelleyemez."
+              : "Geliştirme derlemesinde güncelleme kapalıdır."
+            : "";
 
   const hasBuildTimeToken = hasBuildTimeTmdbToken();
   const openSubtitlesKey = useSettingsStore((state) => state.openSubtitlesKey);
@@ -403,6 +422,42 @@ export default function SettingsPage() {
               </span>
             </span>
           </label>
+        </SectionCard>
+
+        <SectionCard
+          icon={MonitorCog}
+          title="Masaüstü davranışı"
+          description="Pencere, sistem tepsisi ve günlükler."
+        >
+          <DesktopShellSettings />
+        </SectionCard>
+
+        <SectionCard
+          icon={ArrowUpCircle}
+          title="Güncelleme"
+          description="Yeni sürümler GitHub üzerinden dağıtılır ve uygulama içinden kurulur."
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="outline" onClick={updater.check} loading={updater.state.status === "checking"}>
+              <RefreshCw /> Güncelleme denetle
+            </Button>
+
+            {updater.state.status === "available" ? (
+              <Button onClick={updater.download}>{updater.state.version} sürümünü indir</Button>
+            ) : null}
+
+            {updater.state.status === "ready" ? (
+              <Button onClick={updater.install}>Yeniden başlat ve kur</Button>
+            ) : null}
+
+            <span className="text-xs text-muted-foreground">{updateLabel}</span>
+          </div>
+
+          <FieldHint>
+            Kurulum dosyaları imzasız olduğu için Windows her kurulumda bir uyarı gösterir;
+            &quot;Ek bilgi&quot; &rarr; &quot;Yine de çalıştır&quot; ile geçilir. Taşınabilir sürüm kendini
+            güncelleyemez, yenisini elle indirmek gerekir.
+          </FieldHint>
         </SectionCard>
 
         <SectionCard

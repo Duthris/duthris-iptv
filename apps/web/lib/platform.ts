@@ -41,6 +41,22 @@ export interface SubtitleSearchResult {
   fps: number | null;
 }
 
+export type UpdateState =
+  | { status: "idle" }
+  | { status: "checking" }
+  | { status: "current" }
+  | { status: "available"; version: string; notes: string | null }
+  | { status: "downloading"; percent: number }
+  | { status: "ready"; version: string }
+  | { status: "error"; message: string }
+  | { status: "unsupported"; reason: "portable" | "development" };
+
+export interface ShellSettings {
+  minimiseToTray: boolean;
+  launchAtStartup: boolean;
+  alwaysOnTop: boolean;
+}
+
 export interface DesktopBridge {
   isDesktop: true;
 
@@ -72,6 +88,16 @@ export interface DesktopBridge {
     apiKey: string,
     fileId: number,
   ): Promise<{ text: string; fileName: string | null; remaining: number | null }>;
+  getShellSettings(): Promise<ShellSettings>;
+  setShellSettings(next: ShellSettings): Promise<void>;
+  /** Returns the saved path, or null when cancelled. */
+  exportLogs(): Promise<string | null>;
+  getUpdateState(): Promise<UpdateState>;
+  checkForUpdate(): Promise<UpdateState>;
+  downloadUpdate(): Promise<void>;
+  installUpdate(): Promise<void>;
+  /** Returns an unsubscribe function. */
+  onUpdateState(listener: (state: UpdateState) => void): () => void;
   getAppInfo(): Promise<{
     version: string;
     platform: string;
