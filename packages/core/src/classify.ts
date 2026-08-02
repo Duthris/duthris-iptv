@@ -8,6 +8,19 @@ const PATH_LIVE_RE = /\/live\//i;
 const VOD_EXT_RE = /\.(mkv|mp4|avi|mov|m4v|flv|wmv|mpg|mpeg|webm|divx)(\?|$)/i;
 const LIVE_EXT_RE = /\.(m3u8|ts|mpegts|mpd)(\?|$)/i;
 
+/**
+ * Containers a browser plays as-is; everything else needs ffmpeg, which only
+ * the desktop build carries.
+ */
+const DIRECT_PLAY_CONTAINERS = new Set(["mp4", "m4v", "webm", "mov"]);
+
+export function isDirectPlayContainer(container: string | null | undefined): boolean {
+  // An unknown container counts as playable: refusing on no evidence would
+  // hide titles that turn out to be fine.
+  if (!container) return true;
+  return DIRECT_PLAY_CONTAINERS.has(container.replace(/^\./, "").toLowerCase());
+}
+
 const GROUP_SERIES_WORDS = ["dizi", "diziler", "series", "serie", "serien", "tv show", "tvshow"];
 
 const GROUP_VOD_WORDS = [
