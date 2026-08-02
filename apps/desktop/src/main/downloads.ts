@@ -117,10 +117,32 @@ export async function startDownload(request: StartDownloadRequest): Promise<Down
     media,
   ];
 
-  const child = spawn(ffmpegPath(), args);
+  let child: ReturnType<typeof spawn>;
+  try {
+    child = spawn(ffmpegPath(), args);
+  } catch (error) {
+    // Missing or unreadable ffmpeg: report it on the entry instead of letting
+    // it surface as an unhandled exception in the main process.
+    entry.status = "failed";
+    entry.error = error instanceof Error ? error.message : "ffmpeg başlatılamadı";
+    void writeMeta(entry);
+    emit(entry);
+    return entry;
+  }
+
   active.set(request.id, child);
 
-  child.stderr.on("data", (chunk: Buffer) => {
+  // spawn reports a missing binary asynchronously; without this listener the
+  // ENOENT becomes an uncaught exception and Electron shows a crash dialog.
+  child.on("error", (error: Error) => {
+    active.delete(request.id);
+    entry.status = "failed";
+    entry.error = error.message;
+    void writeMeta(entry);
+    emit(entry);
+  });
+
+  child.stderr?.on("data", (chunk: Buffer) => {
     const match = TIME_RE.exec(chunk.toString());
     if (!match || !info.durationSecs) return;
 
@@ -136,6 +158,10 @@ export async function startDownload(request: StartDownloadRequest): Promise<Down
 
   child.on("close", (code) => {
     active.delete(request.id);
+    // A spawn error already recorded the useful message; close fires after it
+    // with a bare exit code that would only make things vaguer.
+    if (entry.status === "failed" && entry.error) return;
+
     if (code === 0 && existsSync(media)) {
       entry.status = "done";
       entry.progress = 1;

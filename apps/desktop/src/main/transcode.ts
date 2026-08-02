@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { createServer, type Server } from "node:http";
-import { createReadStream, statSync } from "node:fs";
+import { createReadStream, existsSync, statSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { app } from "electron";
 
@@ -9,7 +9,19 @@ export function ffmpegPath(): string {
   const resolved = require("ffmpeg-static") as string | null;
   if (!resolved) throw new Error("ffmpeg bulunamadı");
 
-  return app.isPackaged ? resolved.replace("app.asar", "app.asar.unpacked") : resolved;
+  const path = app.isPackaged ? resolved.replace("app.asar", "app.asar.unpacked") : resolved;
+
+  // The module resolves a path whether or not the binary was unpacked, and a
+  // portable copy whose extraction was interrupted has the asar but not the
+  // unpacked tree. Checking here turns a spawn ENOENT into a readable message.
+  if (!existsSync(path)) {
+    throw new Error(
+      "ffmpeg bulunamadı. Taşınabilir sürüm eksik açılmış olabilir; " +
+        "uygulamayı kapatıp yeniden başlatın veya kurulumlu sürümü kullanın.",
+    );
+  }
+
+  return path;
 }
 
 const USER_AGENT = "VLC/3.0.20 LibVLC/3.0.20";
@@ -455,15 +467,37 @@ export async function startTranscodeServer(): Promise<void> {
     session.vttGeneration += 1;
     const generation = session.vttGeneration;
 
-    const child = spawn(
-      ffmpegPath(),
-      buildArgs(session.url, plan, startSecs, cachedEncoder ?? "libx264"),
+    let child: ChildProcess;
+    try {
+      child = spawn(
+        ffmpegPath(),
+        buildArgs(session.url, plan, startSecs, cachedEncoder ?? "libx264"),
 
-      {
-        stdio: wantsTextSubtitle ? ["ignore", "pipe", "pipe", "pipe"] : ["ignore", "pipe", "pipe"],
-      },
-    );
+        {
+          stdio: wantsTextSubtitle
+            ? ["ignore", "pipe", "pipe", "pipe"]
+            : ["ignore", "pipe", "pipe"],
+        },
+      );
+    } catch (error) {
+      // Without ffmpeg there is nothing to serve; answering plainly beats an
+      // unhandled throw, which Electron turns into a crash dialog.
+      const message = error instanceof Error ? error.message : "ffmpeg başlatılamadı";
+      console.warn(`[ffmpeg:${sessionId}] ${message}`);
+      response.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end(message);
+      return;
+    }
+
     session.child = child;
+
+    // spawn reports a missing binary asynchronously, after the headers above
+    // have gone out, so the only thing left to do is drop the connection.
+    child.on("error", (error: Error) => {
+      console.warn(`[ffmpeg:${sessionId}] başlatılamadı: ${error.message}`);
+      if (session.child === child) stopChild(session);
+      response.destroy();
+    });
 
     response.writeHead(200, {
       "Content-Type": "video/mp4",
