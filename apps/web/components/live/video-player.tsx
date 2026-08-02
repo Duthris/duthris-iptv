@@ -56,6 +56,8 @@ export interface VideoPlayerProps {
   onPlayingChange?: (playing: boolean) => void;
   /** Enables online subtitle search for this title. */
   subtitleSearch?: SubtitleQuery | null;
+  /** Hands this stream to mpv or VLC; absent when the caller cannot build one. */
+  onOpenExternally?: () => void;
   className?: string;
 }
 
@@ -146,8 +148,16 @@ export function VideoPlayer({
   mediaSubtitle,
   onPlayingChange,
   subtitleSearch,
+  onOpenExternally,
   className,
 }: VideoPlayerProps) {
+  const externalPlayerPath = useSettingsStore((state) => state.externalPlayerPath);
+  const externalPlayerName = React.useMemo(() => {
+    if (!externalPlayerPath) return null;
+    const file = externalPlayerPath.split(/[\\/]/).pop() ?? "";
+    return /vlc/i.test(file) ? "VLC" : "mpv";
+  }, [externalPlayerPath]);
+
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const hlsRef = React.useRef<Hls | null>(null);
@@ -1422,6 +1432,15 @@ export function VideoPlayer({
           }
           onSubtitleDelayChange={(delta) =>
             setSubtitleDelayMs((current) => (delta === 0 ? 0 : current + delta))
+          }
+          externalPlayerName={onOpenExternally ? externalPlayerName : null}
+          onOpenExternally={
+            onOpenExternally
+              ? () => {
+                  setMenuOpen(false);
+                  onOpenExternally();
+                }
+              : undefined
           }
         />
       ) : null}

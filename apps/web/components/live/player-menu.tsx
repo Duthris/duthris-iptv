@@ -7,6 +7,7 @@ import {
   FileUp,
   Gauge,
   Info,
+  MonitorPlay,
   Moon,
   Ratio,
   RotateCcw,
@@ -49,6 +50,10 @@ export interface PlayerMenuProps {
   subtitleDelayMs?: number;
   onSubtitleDelayChange?: (deltaMs: number) => void;
   onSearchSubtitle?: () => void;
+
+  /** Absent when no external player has been chosen in settings. */
+  externalPlayerName?: string | null;
+  onOpenExternally?: () => void;
 }
 
 const ASPECT_OPTIONS: Array<{ value: AspectRatioMode; label: string }> = [
@@ -172,6 +177,8 @@ export function PlayerMenu({
   subtitleDelayMs = 0,
   onSubtitleDelayChange,
   onSearchSubtitle,
+  externalPlayerName,
+  onOpenExternally,
 }: PlayerMenuProps) {
   const aspectRatio = useSettingsStore((state) => state.aspectRatio);
   const setAspectRatio = useSettingsStore((state) => state.setAspectRatio);
@@ -452,6 +459,29 @@ export function PlayerMenu({
           </p>
         ) : null}
       </Section>
+
+      {externalPlayerName && onOpenExternally ? (
+        <Section icon={<MonitorPlay />} title="Harici oynatıcı">
+          <button
+            type="button"
+            onClick={onOpenExternally}
+            className={cn(
+              "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left",
+              "duration-fast ease-brand transition-colors hover:bg-white/10",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60",
+            )}
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs text-white/90">
+                {externalPlayerName} ile aç
+              </span>
+              <span className="block truncate text-2xs text-white/45">
+                Buradaki oynatma durur — abonelik tek bağlantıya izin veriyor
+              </span>
+            </span>
+          </button>
+        </Section>
+      ) : null}
 
       {streamInfo && streamInfo.length > 0 ? (
         <Section icon={<Info />} title="Yayın bilgisi">

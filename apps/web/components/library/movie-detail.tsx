@@ -19,7 +19,8 @@ import {
   UnsupportedContainerNotice,
   isBrowserPlayableContainer,
 } from "@/components/library/container-notice";
-import { resolveMovieStream } from "@/lib/resolve-stream";
+import { movieStreamTemplate, resolveMovieStream } from "@/lib/resolve-stream";
+import { handOff } from "@/lib/external-player";
 import { useActiveProfile } from "@/stores/profile-store";
 import { formatDuration } from "@/lib/format";
 
@@ -172,6 +173,17 @@ export function MovieDetail({ movieId, onClose }: MovieDetailProps) {
               tmdbId: vodInfo?.tmdbId ?? tmdb?.tmdbId ?? null,
             }}
             startPositionSecs={resumeAt}
+            onOpenExternally={() => {
+              // Our own playback stops first: the subscription allows a single
+              // connection, so both players would be fighting over it.
+              const startSecs = resumeAt ?? 0;
+              setPlaying(false);
+              setStreamUrl(null);
+
+              void movieStreamTemplate(item.id).then((template) =>
+                handOff({ template, title: item.name, startSecs }),
+              );
+            }}
             onProgress={handleProgress}
             onEnded={(duration) => {
               if (!profile || duration <= 0) return;

@@ -56,6 +56,10 @@ export interface SettingsState {
 
   highContrast: boolean;
 
+  /** Path to mpv or VLC; empty means the feature stays hidden. */
+  externalPlayerPath: string;
+
+  setExternalPlayerPath: (value: string) => void;
   setPreferredFormat: (format: StreamFormat) => void;
   setAutoplay: (value: boolean) => void;
   setVolume: (value: number) => void;
@@ -99,6 +103,7 @@ export const useSettingsStore = create<SettingsState>()(
       preferredAudioLang: null,
       preferredSubtitleLang: null,
       keepScreenAwake: true,
+      externalPlayerPath: "",
       tmdbToken: "",
       tmdbEnabled: true,
       openSubtitlesKey: "",
@@ -124,6 +129,7 @@ export const useSettingsStore = create<SettingsState>()(
       setPreferredAudioLang: (preferredAudioLang) => set({ preferredAudioLang }),
       setPreferredSubtitleLang: (preferredSubtitleLang) => set({ preferredSubtitleLang }),
       setKeepScreenAwake: (keepScreenAwake) => set({ keepScreenAwake }),
+      setExternalPlayerPath: (externalPlayerPath) => set({ externalPlayerPath }),
       setTmdbToken: (tmdbToken) => set({ tmdbToken: tmdbToken.trim() }),
       setTmdbEnabled: (tmdbEnabled) => set({ tmdbEnabled }),
       setOpenSubtitlesKey: (openSubtitlesKey) => set({ openSubtitlesKey: openSubtitlesKey.trim() }),

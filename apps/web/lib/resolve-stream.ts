@@ -111,6 +111,80 @@ export function clearCredentialCache(): void {
   credentialCache.clear();
 }
 
+export interface StreamTemplate {
+  /** Holds the bridge placeholder where the password belongs. */
+  urlTemplate: string;
+  credentialRef: string | null;
+}
+
+/**
+ * The address an external player should be handed.
+ *
+ * Unlike the functions above this stops before the secret is filled in: the
+ * main process does that as it launches, so the password never appears in a
+ * command line assembled here. Desktop only, since that substitution is the
+ * bridge's to make.
+ */
+async function templateFor(
+  source: PlaylistSource,
+  build: (runtime: SourceRuntime) => ResolvedStream | null,
+): Promise<StreamTemplate | null> {
+  const context = currentPlaybackContext();
+  const bridge = getDesktopBridge();
+  if (!bridge) return null;
+
+  if (source.kind !== "xtream") {
+    const plain = build({ source, credentials: null, context });
+    return plain ? { urlTemplate: plain.url, credentialRef: null } : null;
+  }
+
+  if (!source.username || !source.credentialRef) return null;
+
+  try {
+    const built = build({
+      source,
+      credentials: parseXtreamCredentials(source.url, {
+        username: source.username,
+        password: bridge.secretPlaceholder,
+      }),
+      context,
+    });
+    return built ? { urlTemplate: built.url, credentialRef: source.credentialRef } : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function channelStreamTemplate(channelId: string): Promise<StreamTemplate | null> {
+  const channel = await getLiveChannel(channelId);
+  if (!channel) return null;
+
+  const source = await getSource(channel.sourceId);
+  if (!source) return null;
+
+  return templateFor(source, (runtime) => resolveLiveStream(channel, runtime));
+}
+
+export async function movieStreamTemplate(vodId: string): Promise<StreamTemplate | null> {
+  const item = await getVodItem(vodId);
+  if (!item) return null;
+
+  const source = await getSource(item.sourceId);
+  if (!source) return null;
+
+  return templateFor(source, (runtime) => resolveVodStream(item, runtime));
+}
+
+export async function episodeStreamTemplate(episodeId: string): Promise<StreamTemplate | null> {
+  const episode = await getEpisode(episodeId);
+  if (!episode) return null;
+
+  const source = await getSource(episode.sourceId);
+  if (!source) return null;
+
+  return templateFor(source, (runtime) => resolveEpisodeStream(episode, runtime));
+}
+
 export async function resolveArchiveStream(
   channelId: string,
   startAt: Date,

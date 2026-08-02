@@ -15,6 +15,8 @@ import {
   type UpdateState,
   type XtreamFetchRequest,
   type XtreamFetchResult,
+  type ExternalPlayer,
+  type OpenExternalRequest,
 } from "../shared/ipc.js";
 
 const bridge = {
@@ -42,6 +44,17 @@ const bridge = {
     ipcRenderer.invoke(IPC.xtreamFetch, request),
 
   xtreamClearCache: (): Promise<void> => ipcRenderer.invoke(IPC.xtreamClearCache),
+
+  listExternalPlayers: (): Promise<ExternalPlayer[]> =>
+    ipcRenderer.invoke(IPC.listExternalPlayers),
+
+  pickExternalPlayer: (): Promise<ExternalPlayer | null> =>
+    ipcRenderer.invoke(IPC.pickExternalPlayer),
+
+  openExternalPlayer: (
+    request: OpenExternalRequest,
+  ): Promise<{ ok: boolean; message?: string }> =>
+    ipcRenderer.invoke(IPC.openExternalPlayer, request),
 
   startTranscode: (sourceUrl: string): Promise<TranscodeSession> =>
     ipcRenderer.invoke(IPC.startTranscode, sourceUrl),

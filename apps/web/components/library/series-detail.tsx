@@ -27,7 +27,8 @@ import { DownloadButton } from "@/components/library/download-button";
 import { localPlaybackUrl, useDownloads } from "@/lib/downloads";
 import { NextEpisodePrompt } from "@/components/library/next-episode-prompt";
 import { ensureEpisodes, groupBySeason, type SeasonGroup } from "@/lib/series-episodes";
-import { resolveEpisodeStreamUrl } from "@/lib/resolve-stream";
+import { episodeStreamTemplate, resolveEpisodeStreamUrl } from "@/lib/resolve-stream";
+import { handOff } from "@/lib/external-player";
 import { useActiveProfile } from "@/stores/profile-store";
 import { useTmdbDetails } from "@/lib/use-tmdb";
 import { formatDuration } from "@/lib/format";
@@ -293,6 +294,18 @@ export function SeriesDetail({ seriesId, onClose }: SeriesDetailProps) {
             logo={playing.cover ?? series.cover}
             live={false}
             startPositionSecs={resumeAt}
+            onOpenExternally={() => {
+              // Stop here first — the subscription allows one connection.
+              const startSecs = resumeAt ?? 0;
+              const episode = playing;
+              const title = `${series.name} · S${episode.season}B${episode.episode}`;
+              setPlaying(null);
+              setStreamUrl(null);
+
+              void episodeStreamTemplate(episode.id).then((template) =>
+                handOff({ template, title, startSecs }),
+              );
+            }}
             onProgress={handleProgress}
             onEnded={(duration) => void handleEnded(duration)}
             mediaSubtitle={series.name}
