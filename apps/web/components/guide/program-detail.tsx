@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Play, Radio, Tag } from "lucide-react";
+import { Clock, History, Play, Radio, Tag } from "lucide-react";
 import type { EpgProgram } from "@iptv/core";
 import { Badge, Button } from "@iptv/ui";
 
@@ -11,11 +11,19 @@ import { formatDuration } from "@/lib/format";
 export interface ProgramDetailProps {
   program: EpgProgram | null;
   channelName: string;
+  /** Enables archive playback when the channel keeps one and the show has ended. */
+  onWatchArchive?: (() => void) | undefined;
   onClose: () => void;
   onWatch: () => void;
 }
 
-export function ProgramDetail({ program, channelName, onClose, onWatch }: ProgramDetailProps) {
+export function ProgramDetail({
+  program,
+  channelName,
+  onClose,
+  onWatch,
+  onWatchArchive,
+}: ProgramDetailProps) {
   const { formatTime, formatDate, shiftMs } = useGuideTime();
 
   const start = program ? program.start + shiftMs : 0;
@@ -61,7 +69,12 @@ export function ProgramDetail({ program, channelName, onClose, onWatch }: Progra
           )}
 
           <div className="flex flex-wrap gap-3">
-            <Button onClick={onWatch}>
+            {onWatchArchive ? (
+              <Button onClick={onWatchArchive}>
+                <History /> Arşivden izle
+              </Button>
+            ) : null}
+            <Button variant={onWatchArchive ? "outline" : "primary"} onClick={onWatch}>
               <Play /> Kanalı aç
             </Button>
           </div>

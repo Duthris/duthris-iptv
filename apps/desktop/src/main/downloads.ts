@@ -1,0 +1,181 @@
+import { spawn, type ChildProcess } from "node:child_process";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { existsSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { app, BrowserWindow } from "electron";
+
+import { IPC, type DownloadEntry, type StartDownloadRequest } from "../shared/ipc.js";
+import { ffmpegPath, probe, planFor, detectVideoEncoder } from "./transcode.js";
+
+/**
+ * Offline copies.
+ *
+ * The source is converted to a plain MP4 rather than saved as-is: two thirds of
+ * this catalog is MKV, which the player could not open without ffmpeg running,
+ * and paying that cost once at download time means the offline copy plays with
+ * nothing else involved. Video is copied whenever the browser can decode it, so
+ * the usual cost is the audio track alone.
+ *
+ * Metadata lives in a JSON file beside each download. The filesystem is the
+ * source of truth — a database row describing a file that is no longer there
+ * would be worse than no record at all.
+ */
+const active = new Map<string, ChildProcess>();
+let getWindow: () => BrowserWindow | null = () => null;
+
+function root(): string {
+  return join(app.getPath("userData"), "downloads");
+}
+
+function paths(id: string) {
+  return { media: join(root(), `${id}.mp4`), meta: join(root(), `${id}.json`) };
+}
+
+function emit(entry: DownloadEntry): void {
+  getWindow()?.webContents.send(IPC.downloadEvent, entry);
+}
+
+async function writeMeta(entry: DownloadEntry): Promise<void> {
+  await writeFile(paths(entry.id).meta, JSON.stringify(entry), "utf8");
+}
+
+export async function listDownloads(): Promise<DownloadEntry[]> {
+  await mkdir(root(), { recursive: true });
+  const files = await readdir(root());
+  const entries: DownloadEntry[] = [];
+
+  for (const name of files) {
+    if (!name.endsWith(".json")) continue;
+    try {
+      const entry = JSON.parse(await readFile(join(root(), name), "utf8")) as DownloadEntry;
+      const { media } = paths(entry.id);
+
+      if (entry.status === "done") {
+        // A completed entry whose file has gone is not a download any more.
+        if (!existsSync(media)) continue;
+        entry.bytes = statSync(media).size;
+      } else if (!active.has(entry.id)) {
+        // Interrupted by a crash or a quit; nothing is resuming it.
+        entry.status = "failed";
+        entry.error = entry.error ?? "İndirme yarıda kesildi";
+      }
+
+      entries.push(entry);
+    } catch {
+      // Unreadable sidecar; skip rather than fail the whole listing.
+    }
+  }
+
+  return entries.sort((a, b) => b.startedAt - a.startedAt);
+}
+
+/** `size=  12345kB time=00:01:23.45 bitrate=...` on ffmpeg's progress lines. */
+const TIME_RE = /time=(\d+):(\d+):(\d+)\.(\d+)/;
+
+export async function startDownload(request: StartDownloadRequest): Promise<DownloadEntry> {
+  await mkdir(root(), { recursive: true });
+
+  const info = await probe(request.url);
+  const plan = planFor(info);
+  const encoder = await detectVideoEncoder();
+  const { media } = paths(request.id);
+
+  const entry: DownloadEntry = {
+    id: request.id,
+    title: request.title,
+    poster: request.poster ?? null,
+    kind: request.kind,
+    itemId: request.itemId,
+    status: "downloading",
+    progress: 0,
+    durationSecs: info.durationSecs,
+    bytes: 0,
+    startedAt: Date.now(),
+    error: null,
+  };
+  await writeMeta(entry);
+  emit(entry);
+
+  const args = [
+    "-hide_banner",
+    "-loglevel", "error",
+    "-stats",
+    "-user_agent", "VLC/3.0.20 LibVLC/3.0.20",
+    "-reconnect", "1",
+    "-reconnect_streamed", "1",
+    "-reconnect_delay_max", "5",
+    "-i", request.url,
+    "-map", "0:v:0?",
+    "-map", "0:a:0?",
+    ...(plan.videoAction === "copy"
+      ? ["-c:v", "copy"]
+      : [...(encoder === "libx264" ? ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23"] : ["-c:v", encoder]), "-pix_fmt", "yuv420p"]),
+    ...(plan.audioAction === "copy" ? ["-c:a", "copy"] : ["-c:a", "aac", "-b:a", "192k", "-ac", "2"]),
+    // A regular MP4, not fragmented: this file is played from disk, not streamed.
+    "-movflags", "+faststart",
+    "-y",
+    media,
+  ];
+
+  const child = spawn(ffmpegPath(), args);
+  active.set(request.id, child);
+
+  child.stderr.on("data", (chunk: Buffer) => {
+    const match = TIME_RE.exec(chunk.toString());
+    if (!match || !info.durationSecs) return;
+
+    const seconds =
+      Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3]) + Number(`0.${match[4]}`);
+    const next = Math.min(1, seconds / info.durationSecs);
+
+    // Only report meaningful movement; ffmpeg prints several lines a second.
+    if (next - entry.progress < 0.01) return;
+    entry.progress = next;
+    emit(entry);
+  });
+
+  child.on("close", (code) => {
+    active.delete(request.id);
+    if (code === 0 && existsSync(media)) {
+      entry.status = "done";
+      entry.progress = 1;
+      entry.bytes = statSync(media).size;
+    } else {
+      entry.status = entry.status === "cancelled" ? "cancelled" : "failed";
+      entry.error = entry.status === "failed" ? `ffmpeg ${code} ile sonlandı` : null;
+    }
+    void writeMeta(entry);
+    emit(entry);
+  });
+
+  return entry;
+}
+
+export function cancelDownload(id: string): void {
+  const child = active.get(id);
+  if (!child) return;
+  child.kill("SIGKILL");
+  active.delete(id);
+}
+
+export async function removeDownload(id: string): Promise<void> {
+  cancelDownload(id);
+  const { media, meta } = paths(id);
+  await rm(media, { force: true });
+  await rm(meta, { force: true });
+}
+
+export function downloadMediaPath(id: string): string | null {
+  const { media } = paths(id);
+  return existsSync(media) ? media : null;
+}
+
+export function registerDownloadWindow(windowGetter: () => BrowserWindow | null): void {
+  getWindow = windowGetter;
+}
+
+/** Kills anything in flight so a quit does not leave an ffmpeg behind. */
+export function shutdownDownloads(): void {
+  for (const child of active.values()) child.kill("SIGKILL");
+  active.clear();
+}

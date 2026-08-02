@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ListVideo, PanelLeftClose, PanelLeftOpen, Radio } from "lucide-react";
+import { History, ListVideo, PanelLeftClose, PanelLeftOpen, Radio } from "lucide-react";
 import { toast } from "sonner";
 import type { CategoryListItem, ChannelListItem, NowNext } from "@iptv/db";
 import { countLiveChannels, listCategories, listLiveChannels, updateSource } from "@iptv/db";
@@ -21,8 +21,12 @@ import { VideoPlayer } from "@/components/live/video-player";
 import { useEpg } from "@/lib/use-epg";
 import { effectiveProtocol, rewriteScheme } from "@iptv/core";
 import { canUseInsecureStreams } from "@/lib/platform";
-import { currentPlaybackContext, resolveChannelStream } from "@/lib/resolve-stream";
-import { useNavigationStore } from "@/stores/navigation-store";
+import {
+  currentPlaybackContext,
+  resolveArchiveStream,
+  resolveChannelStream,
+} from "@/lib/resolve-stream";
+import { useNavigationStore, type PendingArchive } from "@/stores/navigation-store";
 import { useActiveSourceIds, usePlaylistStore } from "@/stores/playlist-store";
 import { useActiveProfile } from "@/stores/profile-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -53,6 +57,8 @@ export default function LivePage() {
   const [panelOpen, setPanelOpen] = React.useState(true);
   const [protocolFix, setProtocolFix] = React.useState(0);
   const [playerPlaying, setPlayerPlaying] = React.useState(false);
+  const [archive, setArchive] = React.useState<PendingArchive | null>(null);
+  const [archiveUrl, setArchiveUrl] = React.useState<string | null>(null);
   const epg = useEpg(sourcesLoaded);
 
   useLiveWatch(current, profile?.id ?? null, playerPlaying);
@@ -173,6 +179,43 @@ export default function LivePage() {
   }, [current, refreshSources]);
 
   const consumeChannel = useNavigationStore((state) => state.consumeChannel);
+  const consumeArchive = useNavigationStore((state) => state.consumeArchive);
+  const pendingArchive = useNavigationStore((state) => state.pendingArchive);
+
+  /**
+   * Archive playback replaces the live stream on this same screen, so the
+   * channel list, controls and guide keep working. Choosing any channel
+   * leaves the archive and returns to live.
+   */
+  React.useEffect(() => {
+    if (!pendingArchive) return;
+    const entry = consumeArchive();
+    if (entry) setArchive(entry);
+  }, [pendingArchive, consumeArchive]);
+
+  React.useEffect(() => {
+    setArchiveUrl(null);
+    if (!archive) return;
+
+    let cancelled = false;
+    void resolveArchiveStream(
+      archive.channelId,
+      new Date(archive.startAt),
+      archive.durationMinutes,
+    ).then((resolved) => {
+      if (cancelled) return;
+      if (!resolved) {
+        toast.error("Arşiv kaydı alınamadı");
+        setArchive(null);
+        return;
+      }
+      setArchiveUrl(resolved.url);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [archive]);
   const pendingChannelId = useNavigationStore((state) => state.pendingChannelId);
 
   React.useEffect(() => {
@@ -193,7 +236,10 @@ export default function LivePage() {
       const index = channels.findIndex((channel) => channel.id === current?.id);
       const target =
         channels[index === -1 ? 0 : (index + delta + channels.length) % channels.length];
-      if (target) playChannel(target);
+      if (target) {
+        setArchive(null);
+        playChannel(target);
+      }
     },
     [channels, current?.id, playChannel],
   );
@@ -288,7 +334,10 @@ export default function LivePage() {
             <ChannelList
               channels={channels}
               activeId={current?.id ?? null}
-              onSelect={playChannel}
+              onSelect={(channel) => {
+                setArchive(null);
+                playChannel(channel);
+              }}
               epgByChannelId={epg.byChannelId}
               loading={loadingChannels}
               className="w-1/2 flex-1"
@@ -296,9 +345,27 @@ export default function LivePage() {
           </div>
 
           <div className="order-1 flex min-h-0 flex-1 flex-col gap-3 p-3 lg:order-2 lg:p-5">
+            {archive ? (
+              <div className="flex shrink-0 flex-wrap items-center gap-3 rounded-lg border border-brand-500/35 bg-brand-500/10 px-3 py-2">
+                <History className="size-4 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-foreground">
+                    {archive.title}
+                  </span>
+                  <span className="text-2xs text-muted-foreground">
+                    Arşivden izleniyor · {new Date(archive.startAt).toLocaleString("tr-TR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </span>
+                <Button variant="outline" size="sm" onClick={() => setArchive(null)}>
+                  <Radio /> Canlıya dön
+                </Button>
+              </div>
+            ) : null}
+
             <div className="flex min-h-0 flex-1 items-center justify-center">
               <VideoPlayer
-                url={streamUrl}
+                url={archiveUrl ?? streamUrl}
+                live={!archive}
                 title={current?.name ?? "Kanal seçilmedi"}
                 logo={current?.logo ?? null}
                 canSwitchToHttp={canSwitchToHttp}

@@ -6,6 +6,12 @@ import { registerIpcHandlers } from "./ipc.js";
 import { registerUpdater } from "./updater.js";
 import { initLogs } from "./logs.js";
 import {
+  downloadMediaPath,
+  registerDownloadWindow,
+  shutdownDownloads,
+} from "./downloads.js";
+import { setLocalFileResolver } from "./transcode.js";
+import {
   createTray,
   destroyTray,
   isQuitting,
@@ -102,6 +108,8 @@ app.whenReady().then(() => {
   void initLogs();
   registerIpcHandlers(() => mainWindow);
   registerUpdater(() => mainWindow);
+  registerDownloadWindow(() => mainWindow);
+  setLocalFileResolver(downloadMediaPath);
   createTray(() => mainWindow);
 
   void configureSecureDns();
@@ -120,4 +128,5 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", shutdownTranscodeServer);
+app.on("before-quit", shutdownDownloads);
 app.on("before-quit", destroyTray);

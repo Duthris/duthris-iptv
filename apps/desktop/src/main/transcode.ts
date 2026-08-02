@@ -1,9 +1,10 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { createServer, type Server } from "node:http";
+import { createReadStream, statSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { app } from "electron";
 
-function ffmpegPath(): string {
+export function ffmpegPath(): string {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const resolved = require("ffmpeg-static") as string | null;
   if (!resolved) throw new Error("ffmpeg bulunamadı");
@@ -340,6 +341,20 @@ interface Session {
 
 const sessions = new Map<string, Session>();
 
+/**
+ * Injected rather than imported, because the download module already imports
+ * this one and a cycle between them would be worse than a setter.
+ */
+let resolveLocalFile: (id: string) => string | null = () => null;
+
+export function setLocalFileResolver(resolver: (id: string) => string | null): void {
+  resolveLocalFile = resolver;
+}
+
+export function localFileUrl(id: string): string {
+  return `http://127.0.0.1:${port}/local/${id}?token=${token}`;
+}
+
 let server: Server | null = null;
 let port = 0;
 let token = "";
@@ -360,6 +375,41 @@ export async function startTranscodeServer(): Promise<void> {
 
     if (url.searchParams.get("token") !== token) {
       response.writeHead(403).end();
+      return;
+    }
+
+    /**
+     * A completed download, played straight from disk.
+     *
+     * Range requests are honoured because the media element issues them to
+     * seek; answering the whole file every time would make scrubbing a large
+     * film unusable.
+     */
+    if (url.pathname.startsWith("/local/")) {
+      const file = resolveLocalFile(url.pathname.replace(/^\/local\//, ""));
+      if (!file) {
+        response.writeHead(404).end();
+        return;
+      }
+
+      const total = statSync(file).size;
+      const range = /bytes=(\d*)-(\d*)/.exec(request.headers.range ?? "");
+      const start = range?.[1] ? Number(range[1]) : 0;
+      const end = range?.[2] ? Number(range[2]) : total - 1;
+
+      if (start >= total || end >= total || start > end) {
+        response.writeHead(416, { "Content-Range": `bytes */${total}` }).end();
+        return;
+      }
+
+      response.writeHead(range ? 206 : 200, {
+        "Content-Type": "video/mp4",
+        "Accept-Ranges": "bytes",
+        "Content-Length": end - start + 1,
+        ...(range ? { "Content-Range": `bytes ${start}-${end}/${total}` } : {}),
+      });
+
+      createReadStream(file, { start, end }).pipe(response);
       return;
     }
 
