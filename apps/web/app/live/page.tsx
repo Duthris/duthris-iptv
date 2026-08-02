@@ -22,10 +22,12 @@ import { useEpg } from "@/lib/use-epg";
 import { effectiveProtocol, rewriteScheme } from "@iptv/core";
 import { canUseInsecureStreams } from "@/lib/platform";
 import {
+  channelStreamTemplate,
   currentPlaybackContext,
   resolveArchiveStream,
   resolveChannelStream,
 } from "@/lib/resolve-stream";
+import { handOff } from "@/lib/external-player";
 import { useNavigationStore, type PendingArchive } from "@/stores/navigation-store";
 import { useActiveSourceIds, usePlaylistStore } from "@/stores/playlist-store";
 import { useActiveProfile } from "@/stores/profile-store";
@@ -372,6 +374,18 @@ export default function LivePage() {
                 onSwitchToHttp={switchSourceToHttp}
                 rewriteUrl={rewriteUrl}
                 fallbackTsUrl={fallbackTsUrl}
+                onOpenExternally={
+                  current && !archive
+                    ? () => {
+                        // One connection only, so this player stops first.
+                        const channel = current;
+                        setStreamUrl(null);
+                        void channelStreamTemplate(channel.id).then((template) =>
+                          handOff({ template, title: channel.name }),
+                        );
+                      }
+                    : undefined
+                }
                 onPrevious={channels.length > 1 ? () => playRelative(-1) : undefined}
                 onNext={channels.length > 1 ? () => playRelative(1) : undefined}
                 previousLabel="Önceki kanal"

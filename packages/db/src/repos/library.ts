@@ -160,6 +160,17 @@ export async function clearHistory(profileId: string): Promise<void> {
   await getDb().watchHistory.where("profileId").equals(profileId).delete();
 }
 
+/**
+ * Drops one entry from the history.
+ *
+ * The shortcut rows on the home screen are derived from watch counts, so this
+ * is what taking a channel off them means. Zeroing the counters instead would
+ * leave a row that climbs straight back after one more viewing.
+ */
+export async function forgetWatchEntry(profileId: string, itemId: string): Promise<void> {
+  await getDb().watchHistory.delete(`${profileId}:${itemId}`);
+}
+
 export async function listLiveHistory(
   profileId: string,
   limit = 200,

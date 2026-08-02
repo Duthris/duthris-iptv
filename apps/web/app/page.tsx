@@ -16,6 +16,7 @@ import {
 
 import { AppShell } from "@/components/app-shell";
 import { ChannelShortcuts } from "@/components/home/channel-shortcuts";
+import { FavoriteShortcuts } from "@/components/home/favorite-shortcuts";
 import { daysUntilExpiry, expiryTone } from "@/components/playlist/subscription-status";
 import { WelcomeHero } from "@/components/welcome-hero";
 import { usePlaylistStore } from "@/stores/playlist-store";
@@ -166,6 +167,8 @@ export default function HomePage() {
         ) : null}
 
         <ChannelShortcuts profileId={profile?.id ?? null} />
+
+        <FavoriteShortcuts profileId={profile?.id ?? null} />
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <LibraryCard

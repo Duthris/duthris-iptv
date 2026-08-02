@@ -14,12 +14,22 @@ interface NavigationState {
   pendingSeriesId: string | null;
   pendingChannelId: string | null;
   pendingArchive: PendingArchive | null;
+  /**
+   * Which tab the library screen should land on.
+   *
+   * Carried here rather than in the URL because the desktop build is a static
+   * export, where a query string would need its own Suspense boundary to be
+   * read at all.
+   */
+  pendingLibraryTab: string | null;
 
   openMovie: (id: string) => void;
   openSeries: (id: string) => void;
   openChannel: (id: string) => void;
   openArchive: (entry: PendingArchive) => void;
+  openLibraryTab: (tab: string) => void;
 
+  consumeLibraryTab: () => string | null;
   consumeMovie: () => string | null;
   consumeSeries: () => string | null;
   consumeChannel: () => string | null;
@@ -31,6 +41,14 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
   pendingSeriesId: null,
   pendingChannelId: null,
   pendingArchive: null,
+  pendingLibraryTab: null,
+
+  openLibraryTab: (tab) => set({ pendingLibraryTab: tab }),
+  consumeLibraryTab: () => {
+    const tab = get().pendingLibraryTab;
+    if (tab) set({ pendingLibraryTab: null });
+    return tab;
+  },
 
   openMovie: (id) => set({ pendingMovieId: id }),
   openSeries: (id) => set({ pendingSeriesId: id }),

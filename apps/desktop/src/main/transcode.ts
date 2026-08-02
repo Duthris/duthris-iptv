@@ -367,6 +367,10 @@ export function localFileUrl(id: string): string {
   return `http://127.0.0.1:${port}/local/${id}?token=${token}`;
 }
 
+export function trailerEmbedUrl(videoId: string): string {
+  return `http://127.0.0.1:${port}/embed?v=${encodeURIComponent(videoId)}&token=${token}`;
+}
+
 let server: Server | null = null;
 let port = 0;
 let token = "";
@@ -387,6 +391,37 @@ export async function startTranscodeServer(): Promise<void> {
 
     if (url.searchParams.get("token") !== token) {
       response.writeHead(403).end();
+      return;
+    }
+
+    /**
+     * A page that exists only to host a YouTube embed.
+     *
+     * The renderer lives on a custom scheme, and YouTube rejects `app://` as
+     * an embedding origin — that is error 153, a player configuration failure
+     * rather than anything about the video. It reads that origin from the
+     * browsing context, so no header can stand in for it. Serving this from
+     * the loopback server gives the embed a real http origin to sit on.
+     */
+    if (url.pathname === "/embed") {
+      const id = url.searchParams.get("v") ?? "";
+      if (!/^[\w-]{6,20}$/.test(id)) {
+        response.writeHead(400).end();
+        return;
+      }
+
+      response.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+      });
+      response.end(
+        `<!doctype html><meta charset="utf-8">` +
+          `<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}` +
+          `iframe{border:0;width:100%;height:100%;display:block}</style>` +
+          `<iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0"` +
+          ` allow="autoplay; encrypted-media; picture-in-picture; fullscreen"` +
+          ` allowfullscreen></iframe>`,
+      );
       return;
     }
 

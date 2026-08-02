@@ -10,9 +10,16 @@ import {
   type ShellSettings,
   type StartDownloadRequest,
   type SubtitleSearchRequest,
+  type ExternalPlayer,
+  type OpenExternalRequest,
   type XtreamFetchRequest,
 } from "../shared/ipc.js";
 import { clearXtreamCache, fetchXtream, substituteSecret } from "./xtream.js";
+import {
+  describeExternalPlayer,
+  listExternalPlayers,
+  openInExternalPlayer,
+} from "./external-player.js";
 import { deleteCredential, readCredential, saveCredential } from "./credentials.js";
 import { createTranscodeSession, stopTranscodeSession } from "./transcode.js";
 import { downloadSubtitle, searchSubtitles } from "./subtitles.js";
@@ -23,7 +30,7 @@ import {
   removeDownload,
   startDownload,
 } from "./downloads.js";
-import { localFileUrl, startTranscodeServer } from "./transcode.js";
+import { localFileUrl, startTranscodeServer, trailerEmbedUrl } from "./transcode.js";
 import { launchAtStartupEnabled, setLaunchAtStartup, setTrayOptions } from "./tray.js";
 
 const MAX_PLAYLIST_BYTES = 200 * 1024 * 1024;
@@ -88,6 +95,33 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   });
 
   ipcMain.handle(IPC.xtreamClearCache, () => clearXtreamCache());
+
+  ipcMain.handle(IPC.trailerEmbedUrl, async (_event, videoId: string): Promise<string> => {
+    // The server is started lazily, and a trailer can be the first thing that
+    // needs it — without this the URL carries port 0 and an empty token.
+    await startTranscodeServer();
+    return trailerEmbedUrl(videoId);
+  });
+
+  ipcMain.handle(IPC.listExternalPlayers, (): ExternalPlayer[] => listExternalPlayers());
+
+  ipcMain.handle(IPC.pickExternalPlayer, async (): Promise<ExternalPlayer | null> => {
+    const window = getWindow();
+    if (!window) return null;
+
+    const result = await dialog.showOpenDialog(window, {
+      title: "Oynatıcı uygulamasını seç",
+      properties: ["openFile"],
+      filters: [{ name: "Uygulama", extensions: ["exe"] }],
+    });
+
+    const picked = result.filePaths[0];
+    return picked ? describeExternalPlayer(picked) : null;
+  });
+
+  ipcMain.handle(IPC.openExternalPlayer, (_event, request: OpenExternalRequest) => {
+    return openInExternalPlayer(request);
+  });
 
   ipcMain.handle(IPC.startTranscode, async (_event, sourceUrl: string) => {
     return createTranscodeSession(sourceUrl);

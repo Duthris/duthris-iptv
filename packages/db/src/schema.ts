@@ -45,6 +45,8 @@ export interface TmdbCacheEntry {
 
   details: unknown | null;
   fetchedAt: number;
+  /** Shape of `details`; absent on rows written before it was tracked. */
+  shape?: number;
 }
 
 export class IptvDatabase extends Dexie {

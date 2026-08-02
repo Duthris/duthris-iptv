@@ -82,6 +82,12 @@ export interface StartDownloadRequest {
   itemId: string;
 }
 
+export interface ExternalPlayerInfo {
+  kind: "mpv" | "vlc";
+  name: string;
+  path: string;
+}
+
 export interface DesktopBridge {
   isDesktop: true;
 
@@ -101,10 +107,24 @@ export interface DesktopBridge {
     credentialRef: string;
     urlTemplate: string;
     maxAgeMs?: number;
+    userAgent?: string | null;
   }): Promise<
     { ok: true; body: string; fromCache: boolean } | { ok: false; message: string; status: number }
   >;
   xtreamClearCache(): Promise<void>;
+
+  /** Loopback page that hosts the embed, so it has a real http origin. */
+  trailerEmbedUrl(videoId: string): Promise<string>;
+  listExternalPlayers(): Promise<ExternalPlayerInfo[]>;
+  pickExternalPlayer(): Promise<ExternalPlayerInfo | null>;
+  openExternalPlayer(request: {
+    playerPath: string;
+    urlTemplate: string;
+    credentialRef?: string | null;
+    startSecs?: number;
+    title: string;
+    userAgent?: string | null;
+  }): Promise<{ ok: boolean; message?: string }>;
 
   startTranscode(sourceUrl: string): Promise<TranscodeSession>;
   stopTranscode(sessionUrl: string): Promise<void>;

@@ -47,6 +47,8 @@ export interface TmdbDetails {
   runtimeMins: number | null;
   tagline: string | null;
   cast: TmdbPerson[];
+  /** YouTube id of the best trailer, or null when there is none. */
+  trailerKey: string | null;
 }
 
 export interface TmdbClientOptions {
@@ -84,6 +86,7 @@ interface RawDetails {
   episode_run_time?: unknown;
   tagline?: unknown;
   credits?: unknown;
+  videos?: unknown;
 }
 
 interface RawSearchResponse {
@@ -108,6 +111,37 @@ function yearOf(value: unknown): number | null {
   if (!text) return null;
   const year = Number(text.slice(0, 4));
   return Number.isFinite(year) && year > 1800 ? year : null;
+}
+
+/**
+ * Picks one trailer out of the pile TMDB returns.
+ *
+ * A popular title can carry a dozen entries — teasers, clips, featurettes, in
+ * several languages. Ranking rather than taking the first keeps the result on
+ * the actual trailer, and only YouTube is considered because that is the one
+ * site an external browser will certainly play.
+ */
+function parseTrailerKey(videos: unknown): string | null {
+  if (typeof videos !== "object" || videos === null) return null;
+  const list = (videos as { results?: unknown }).results;
+  if (!Array.isArray(list)) return null;
+
+  let best: { key: string; score: number } | null = null;
+
+  for (const entry of list) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const row = entry as { key?: unknown; site?: unknown; type?: unknown; official?: unknown };
+
+    const key = str(row.key);
+    if (!key || str(row.site)?.toLowerCase() !== "youtube") continue;
+
+    const type = str(row.type)?.toLowerCase();
+    const score = (type === "trailer" ? 4 : type === "teaser" ? 2 : 0) + (row.official ? 1 : 0);
+
+    if (!best || score > best.score) best = { key, score };
+  }
+
+  return best?.key ?? null;
 }
 
 const MAX_CAST = 12;
@@ -163,6 +197,7 @@ function parseDetails(raw: RawDetails): TmdbDetails | null {
     runtimeMins: runtime,
     tagline: str(raw.tagline),
     cast: parseCast(raw.credits),
+    trailerKey: parseTrailerKey(raw.videos),
   };
 }
 
@@ -212,7 +247,17 @@ export class TmdbClient {
     const raw = await this.request<RawDetails>(
       `/${kind}/${tmdbId}`,
 
-      { append_to_response: "credits" },
+      {
+        append_to_response: "credits,videos",
+        /**
+         * MEASURED: without this the language above filters the trailers too,
+         * and most titles have none in Turkish — Inception returns 27 videos
+         * with it and zero without. Breaking Bad happens to have a Turkish
+         * trailer, so checking a single title would have hidden this.
+         * `null` covers entries TMDB files under no language at all.
+         */
+        include_video_language: "tr,en,null",
+      },
       options,
     );
     return parseDetails(raw);

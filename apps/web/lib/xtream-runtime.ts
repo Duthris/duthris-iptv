@@ -31,12 +31,21 @@ import { getHttpClient } from "./http";
  */
 export const CATALOG_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
-function bridgeHttpClient(credentialRef: string, maxAgeMs: number): HttpClient {
+function bridgeHttpClient(
+  credentialRef: string,
+  maxAgeMs: number,
+  userAgent: string | null,
+): HttpClient {
   const bridge = getDesktopBridge();
   if (!bridge) throw new Error("Masaüstü köprüsü yok");
 
   async function body(url: string): Promise<string> {
-    const result = await bridge!.xtreamFetch({ credentialRef, urlTemplate: url, maxAgeMs });
+    const result = await bridge!.xtreamFetch({
+      credentialRef,
+      urlTemplate: url,
+      maxAgeMs,
+      userAgent,
+    });
     if (!result.ok) throw new HttpError(result.message, result.status, url);
     return result.body;
   }
@@ -80,7 +89,11 @@ export async function createXtreamClient(
       username: source.username,
       password: bridge.secretPlaceholder,
     });
-    const http = bridgeHttpClient(source.credentialRef, options.maxAgeMs ?? 0);
+    const http = bridgeHttpClient(
+      source.credentialRef,
+      options.maxAgeMs ?? 0,
+      source.userAgent ?? null,
+    );
     return new XtreamClient(withRequestQueue(http), credentials);
   }
 

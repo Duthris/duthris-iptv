@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, Loader2, RotateCcw, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Loader2, Radio, RotateCcw, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import type Hls from "hls.js";
 import { checkPlaybackCapability, detectStreamKind, maskCredentialsInUrl } from "@iptv/core";
@@ -56,6 +56,8 @@ export interface VideoPlayerProps {
   onPlayingChange?: (playing: boolean) => void;
   /** Enables online subtitle search for this title. */
   subtitleSearch?: SubtitleQuery | null;
+  /** Hands this stream to mpv or VLC; absent when the caller cannot build one. */
+  onOpenExternally?: () => void;
   className?: string;
 }
 
@@ -146,8 +148,21 @@ export function VideoPlayer({
   mediaSubtitle,
   onPlayingChange,
   subtitleSearch,
+  onOpenExternally,
   className,
 }: VideoPlayerProps) {
+  const externalPlayerPath = useSettingsStore((state) => state.externalPlayerPath);
+  const externalPlayerName = React.useMemo(() => {
+    if (!externalPlayerPath) return null;
+    const file = externalPlayerPath.split(/[\\/]/).pop() ?? "";
+    return /vlc/i.test(file) ? "VLC" : "mpv";
+  }, [externalPlayerPath]);
+
+  /**
+   * A stream carrying no picture is a radio station, and this account has 1.195
+   * of them. Measuring the track beats guessing from the category name: it is
+   * true by construction and works whatever the provider calls things.
+   */
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const hlsRef = React.useRef<Hls | null>(null);
@@ -1197,6 +1212,10 @@ export function VideoPlayer({
 
   const forcedRatio = aspectRatio === "16:9" ? "16 / 9" : aspectRatio === "4:3" ? "4 / 3" : null;
 
+  // Only meaningful once something is playing: before that a missing size just
+  // means the first frame has not arrived.
+  const audioOnly = state.status === "playing" && videoSize === null;
+
   const videoFitClass =
     aspectRatio === "zoom"
       ? "object-cover"
@@ -1275,6 +1294,44 @@ export function VideoPlayer({
           });
         }}
       />
+
+      {audioOnly ? (
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-4 px-6">
+          {logo && !logoFailed ? (
+            <img
+              src={logo}
+              alt=""
+              className="size-24 rounded-xl bg-white/5 object-contain p-2"
+            />
+          ) : (
+            <span className="bg-primary/15 text-primary grid size-24 place-items-center rounded-xl">
+              <Radio className="size-10" />
+            </span>
+          )}
+
+          <div className="flex flex-col items-center gap-1 text-center">
+            <span className="text-base font-semibold text-white">{title}</span>
+            <span className="text-2xs uppercase tracking-wide text-white/45">Ses yayını</span>
+          </div>
+
+          {/* Movement is the only signal that a stream with no picture is alive. */}
+          {!paused ? (
+            <div className="flex items-end gap-1" aria-hidden>
+              {[0, 1, 2, 3, 4].map((bar) => (
+                <span
+                  key={bar}
+                  className="bg-primary/70 w-1 animate-pulse rounded-full"
+                  style={{
+                    height: `${10 + ((bar * 7) % 18)}px`,
+                    animationDelay: `${bar * 140}ms`,
+                    animationDuration: "1.1s",
+                  }}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {url ? (
         <div
@@ -1422,6 +1479,15 @@ export function VideoPlayer({
           }
           onSubtitleDelayChange={(delta) =>
             setSubtitleDelayMs((current) => (delta === 0 ? 0 : current + delta))
+          }
+          externalPlayerName={onOpenExternally ? externalPlayerName : null}
+          onOpenExternally={
+            onOpenExternally
+              ? () => {
+                  setMenuOpen(false);
+                  onOpenExternally();
+                }
+              : undefined
           }
         />
       ) : null}

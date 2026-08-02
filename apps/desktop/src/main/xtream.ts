@@ -4,6 +4,7 @@ import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises"
 import { join } from "node:path";
 
 import {
+  DEFAULT_USER_AGENT,
   SECRET_PLACEHOLDER,
   type XtreamFetchRequest,
   type XtreamFetchResult,
@@ -93,7 +94,10 @@ export async function fetchXtream(request: XtreamFetchRequest): Promise<XtreamFe
   const url = substituteSecret(request.urlTemplate, secret);
 
   try {
-    const response = await net.fetch(url, { redirect: "follow" });
+    const response = await net.fetch(url, {
+      redirect: "follow",
+      headers: { "User-Agent": request.userAgent?.trim() || DEFAULT_USER_AGENT },
+    });
     if (!response.ok) {
       return {
         ok: false,

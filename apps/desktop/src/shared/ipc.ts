@@ -30,6 +30,10 @@ export const IPC = {
   downloadEvent: "download:event",
   xtreamFetch: "xtream:fetch",
   xtreamClearCache: "xtream:clear-cache",
+  trailerEmbedUrl: "trailer:embed-url",
+  listExternalPlayers: "external:list",
+  pickExternalPlayer: "external:pick",
+  openExternalPlayer: "external:open",
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];
@@ -41,12 +45,35 @@ export interface PickedPlaylistFile {
 
 export const SECRET_PLACEHOLDER = "__IPTV_SECRET__";
 
+export type ExternalPlayerKind = "mpv" | "vlc";
+
+export interface ExternalPlayer {
+  kind: ExternalPlayerKind;
+  name: string;
+  path: string;
+}
+
+export interface OpenExternalRequest {
+  playerPath: string;
+  /** Carries SECRET_PLACEHOLDER when the source is an Xtream panel. */
+  urlTemplate: string;
+  credentialRef?: string | null;
+  startSecs?: number;
+  title: string;
+  userAgent?: string | null;
+}
+
+/** What every outbound request identifies as unless a source overrides it. */
+export const DEFAULT_USER_AGENT = "VLC/3.0.20 LibVLC/3.0.20";
+
 export interface XtreamFetchRequest {
   credentialRef: string;
   /** Carries SECRET_PLACEHOLDER where the password belongs. */
   urlTemplate: string;
   /** Omitted or zero bypasses the disk cache in both directions. */
   maxAgeMs?: number;
+  /** Per-source override; empty falls back to the built-in default. */
+  userAgent?: string | null;
 }
 
 export type XtreamFetchResult =
