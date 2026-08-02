@@ -21,6 +21,17 @@ import { ffmpegPath, probe, planFor, detectVideoEncoder } from "./transcode.js";
  * would be worse than no record at all.
  */
 const active = new Map<string, ChildProcess>();
+
+/**
+ * In-flight entries, kept in memory.
+ *
+ * Progress is not written to the sidecar on every tick — that would be a disk
+ * write several times a second for hours. So a listing has to read the live
+ * value from here, or a screen opened mid-download would show 0% until the
+ * next progress event happened to arrive.
+ */
+const live = new Map<string, DownloadEntry>();
+
 let getWindow: () => BrowserWindow | null = () => null;
 
 function root(): string {
@@ -47,7 +58,16 @@ export async function listDownloads(): Promise<DownloadEntry[]> {
   for (const name of files) {
     if (!name.endsWith(".json")) continue;
     try {
-      const entry = JSON.parse(await readFile(join(root(), name), "utf8")) as DownloadEntry;
+      const stored = JSON.parse(await readFile(join(root(), name), "utf8")) as DownloadEntry;
+
+      // A running download knows its own progress; the sidecar does not.
+      const running = live.get(stored.id);
+      if (running) {
+        entries.push({ ...running });
+        continue;
+      }
+
+      const entry = stored;
       const { media } = paths(entry.id);
 
       if (entry.status === "done") {
@@ -94,6 +114,7 @@ export async function startDownload(request: StartDownloadRequest): Promise<Down
     error: null,
   };
   await writeMeta(entry);
+  live.set(entry.id, entry);
   emit(entry);
 
   const args = [
@@ -156,19 +177,33 @@ export async function startDownload(request: StartDownloadRequest): Promise<Down
     emit(entry);
   });
 
-  child.on("close", (code) => {
+  child.on("close", (code, signal) => {
     active.delete(request.id);
+    live.delete(request.id);
+
     // A spawn error already recorded the useful message; close fires after it
     // with a bare exit code that would only make things vaguer.
     if (entry.status === "failed" && entry.error) return;
+
+    if (entry.status === "cancelled") {
+      // The sidecar went at cancel time; the half-written file could not until
+      // ffmpeg let go of it, which has just happened.
+      void rm(media, { force: true });
+      emit(entry);
+      return;
+    }
 
     if (code === 0 && existsSync(media)) {
       entry.status = "done";
       entry.progress = 1;
       entry.bytes = statSync(media).size;
     } else {
-      entry.status = entry.status === "cancelled" ? "cancelled" : "failed";
-      entry.error = entry.status === "failed" ? `ffmpeg ${code} ile sonlandı` : null;
+      entry.status = "failed";
+      // A killed process reports a signal and a null code, so naming the code
+      // alone would print "ffmpeg null ile sonlandı".
+      entry.error = signal
+        ? `ffmpeg ${signal} ile durduruldu`
+        : `ffmpeg ${code} ile sonlandı`;
     }
     void writeMeta(entry);
     emit(entry);
@@ -177,9 +212,21 @@ export async function startDownload(request: StartDownloadRequest): Promise<Down
   return entry;
 }
 
+/**
+ * Giving up on a download leaves no trace.
+ *
+ * The user asked for it to stop, so a leftover "failed" row would be noise.
+ * The sidecar goes now — a refresh right after this call has to see it gone —
+ * and the close handler removes the partial file once ffmpeg releases it.
+ */
 export function cancelDownload(id: string): void {
   const child = active.get(id);
   if (!child) return;
+
+  const entry = live.get(id);
+  if (entry) entry.status = "cancelled";
+
+  void rm(paths(id).meta, { force: true });
   child.kill("SIGKILL");
   active.delete(id);
 }

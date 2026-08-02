@@ -124,7 +124,13 @@ export function DownloadButton({
   if (entry?.status === "downloading") {
     return (
       <div className={cn("flex min-w-40 flex-col gap-1.5", className)}>
-        <Progress value={entry.progress} label={`İndiriliyor · %${Math.round(entry.progress * 100)}`} />
+        <span className="tabular text-2xs text-muted-foreground">
+          İndiriliyor · %{Math.round(entry.progress * 100)}
+        </span>
+        <Progress
+          value={entry.progress}
+          label={`İndiriliyor · %${Math.round(entry.progress * 100)}`}
+        />
         <Button
           variant="ghost"
           size="sm"

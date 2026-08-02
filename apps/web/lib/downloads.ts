@@ -45,6 +45,12 @@ export function useDownloads(): {
     // not mean a timer running for an hour.
     return bridge.onDownloadState((entry) => {
       setEntries((current) => {
+        // A cancelled download is gone on disk too, so keeping the row would
+        // only re-add what the user just dismissed.
+        if (entry.status === "cancelled") {
+          return current.filter((row) => row.id !== entry.id);
+        }
+
         const index = current.findIndex((row) => row.id === entry.id);
         if (index === -1) return [entry, ...current];
         const next = [...current];

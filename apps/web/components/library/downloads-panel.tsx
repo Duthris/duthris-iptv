@@ -62,7 +62,16 @@ function Row({
         </div>
 
         {entry.status === "downloading" ? (
-          <Progress value={entry.progress} label={`%${Math.round(entry.progress * 100)}`} />
+          <div className="flex items-center gap-2.5">
+            <Progress
+              value={entry.progress}
+              label={`%${Math.round(entry.progress * 100)}`}
+              className="flex-1"
+            />
+            <span className="tabular text-2xs text-muted-foreground w-9 shrink-0 text-right">
+              %{Math.round(entry.progress * 100)}
+            </span>
+          </div>
         ) : (
           <span className="tabular text-2xs text-muted-foreground">
             {done ? size(entry.bytes) : (entry.error ?? "")}
